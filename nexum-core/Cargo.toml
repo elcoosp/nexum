@@ -1,0 +1,17 @@
+[package]
+name = "nexum-core"
+version = "0.1.0"
+edition = "2021"
+description = "Framework-agnostic deep linking for Rust"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+url = "2.5"
+async-channel = "2.3"
+thiserror = "2.0"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-registry = "0.5"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+dirs = "5.0"
