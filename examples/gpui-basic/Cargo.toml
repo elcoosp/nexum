@@ -6,4 +6,4 @@ edition = "2021"
 [dependencies]
 nexum-gpui = { path = "../../nexum-gpui" }
 nexum-core = { path = "../../nexum-core" }
-gpui = "0.1"
+gpui = { git = "https://github.com/zed-industries/zed" }

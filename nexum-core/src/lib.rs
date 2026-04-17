@@ -73,7 +73,6 @@ impl Nexum {
             event_rx,
         };
 
-        // Check for a launch URL on Windows / Linux.
         #[cfg(target_os = "windows")]
         if let Some(urls) = platform::windows::get_current_urls() {
             let _ = nexum.event_tx.try_send(urls);
@@ -119,10 +118,8 @@ impl Nexum {
         return platform::windows::get_current_urls();
         #[cfg(target_os = "linux")]
         return platform::linux::get_current_urls();
-        #[cfg(target_os = "macos")]
-        return None;
-        #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-        return None;
+        #[allow(unreachable_code)]
+        None
     }
 
     /// Checks if a scheme is registered as the default handler.
@@ -134,9 +131,7 @@ impl Nexum {
         return platform::windows::is_registered(scheme);
         #[cfg(target_os = "linux")]
         return platform::linux::is_registered(scheme);
-        #[cfg(target_os = "macos")]
-        return Err(Error::UnsupportedPlatform);
-        #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+        #[allow(unused_variables)]
         Err(Error::UnsupportedPlatform)
     }
 
@@ -146,8 +141,9 @@ impl Nexum {
         platform::windows::unregister_scheme(scheme)?;
         #[cfg(target_os = "linux")]
         platform::linux::unregister_scheme(scheme)?;
-        #[cfg(target_os = "macos")]
-        return Err(Error::UnsupportedPlatform);
+        #[allow(unused_variables)]
+        let _ = scheme;
+        #[allow(unreachable_code)]
         Ok(())
     }
 
