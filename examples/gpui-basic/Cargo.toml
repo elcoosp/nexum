@@ -2,10 +2,21 @@
 name = "gpui-basic"
 version = "0.1.0"
 edition = "2021"
+description = "Nexum GPUI Deep Link Example"
 
 [dependencies]
 nexum-gpui = { path = "../../nexum-gpui" }
 nexum-core = { path = "../../nexum-core" }
 gpui = { git = "https://github.com/zed-industries/zed" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", features = ["font-kit", "x11", "wayland", "runtime_shaders"] }
 
-gpui_platform = { git = "https://github.com/zed-industries/zed" }
+[package.metadata.bundle]
+name = "Nexum GPUI Example"
+identifier = "com.nexum.gpui-basic"
+icon = ["icon.png"]
+version = "0.1.0"
+copyright = "MIT"
+category = "public.app-category.developer-tools"
+short_description = "Nexum GPUI Deep Link Example"
+long_description = "Example application for Nexum deep linking in GPUI."
+osx_url_schemes = ["myapp"]

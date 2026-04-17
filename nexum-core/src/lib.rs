@@ -1,12 +1,15 @@
 //! Nexum Core: Framework-agnostic deep linking for Rust.
-//!
-//! This crate handles platform-specific URL scheme registration and provides
-//! an async channel for receiving incoming URLs. Framework adapters should
-//! wrap `Nexum` and deliver events using the framework's idioms.
 
 mod config;
 mod error;
-mod platform;
+
+// Suppress warnings from old objc 0.2 macros inside platform/macos.rs
+#[cfg(target_os = "macos")]
+#[allow(unexpected_cfgs)]
+pub mod platform;
+
+#[cfg(not(target_os = "macos"))]
+pub mod platform;
 
 pub use config::{AppLink, Config};
 pub use error::Error;
@@ -17,26 +20,38 @@ use url::Url;
 /// The main deep link manager.
 pub struct Nexum {
     config: Config,
+    #[allow(dead_code)]
     event_tx: Sender<Vec<Url>>,
     event_rx: Receiver<Vec<Url>>,
 }
 
 impl Nexum {
     /// Creates a new instance with the given configuration.
-    /// On platforms that support it, this immediately checks for a current URL
-    /// (e.g., from command line arguments) and sends it through the channel.
     pub fn new(config: Config) -> Self {
         let (event_tx, event_rx) = async_channel::unbounded();
+
+        #[cfg(target_os = "macos")]
+        platform::macos::set_event_tx(event_tx.clone());
+
         let nexum = Self {
             config,
             event_tx,
             event_rx,
         };
 
+        #[cfg(target_os = "macos")]
+        {
+            platform::macos::setup_apple_event_listener();
+            if let Some(urls) = platform::macos::get_current_urls() {
+                let _ = nexum.event_tx.try_send(urls);
+            }
+        }
+
         #[cfg(target_os = "windows")]
         if let Some(urls) = platform::windows::get_current_urls() {
             let _ = nexum.event_tx.try_send(urls);
         }
+
         #[cfg(target_os = "linux")]
         if let Some(urls) = platform::linux::get_current_urls() {
             let _ = nexum.event_tx.try_send(urls);
@@ -62,8 +77,6 @@ impl Nexum {
     }
 
     /// Returns the current deep link URLs, if any.
-    /// On Windows and Linux, this checks command line arguments.
-    /// On macOS, this checks command line arguments (for testing/CLI usage).
     pub fn get_current(&self) -> Option<Vec<Url>> {
         #[cfg(target_os = "windows")]
         return platform::windows::get_current_urls();
@@ -95,11 +108,6 @@ impl Nexum {
         }
         #[cfg(not(any(target_os = "windows", target_os = "linux")))]
         Err(Error::UnsupportedPlatform)
-    }
-
-    /// Returns a clone of the sender for platform-specific use (e.g., macOS Apple Events).
-    pub fn event_sender(&self) -> Sender<Vec<Url>> {
-        self.event_tx.clone()
     }
 
     /// macOS/iOS: Call this from your native app delegate when an `openURLs` event occurs.
