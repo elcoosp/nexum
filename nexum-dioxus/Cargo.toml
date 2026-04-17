@@ -1,0 +1,11 @@
+[package]
+name = "nexum-dioxus"
+version = "0.1.0"
+edition = "2021"
+description = "Dioxus adapter for nexum deep linking"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+nexum-core = { path = "../nexum-core", version = "0.1.0" }
+dioxus = "0.6"
+url = "2.5"

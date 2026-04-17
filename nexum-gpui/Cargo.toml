@@ -1,0 +1,12 @@
+[package]
+name = "nexum-gpui"
+version = "0.1.0"
+edition = "2021"
+description = "GPUI adapter for nexum deep linking"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+nexum-core = { path = "../nexum-core", version = "0.1.0" }
+gpui = "0.1"
+async-channel = "2.3"
+url = "2.5"
