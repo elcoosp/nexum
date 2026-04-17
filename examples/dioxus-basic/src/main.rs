@@ -2,7 +2,7 @@ use dioxus::prelude::*;
 use nexum_core::Config;
 use nexum_dioxus::{use_deep_link_listener, DEEP_LINK_URLS};
 
-fn App() -> Element {
+fn app() -> Element {
     let config = Config {
         schemes: vec!["myapp".to_string()],
         app_links: vec![],
@@ -31,5 +31,5 @@ fn main() {
                 dioxus::desktop::WindowBuilder::new().with_title("Nexum Dioxus Example"),
             ),
         )
-        .launch(App);
+        .launch(app);
 }

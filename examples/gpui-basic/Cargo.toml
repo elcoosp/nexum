@@ -7,3 +7,5 @@ edition = "2021"
 nexum-gpui = { path = "../../nexum-gpui" }
 nexum-core = { path = "../../nexum-core" }
 gpui = { git = "https://github.com/zed-industries/zed" }
+
+gpui_platform = { git = "https://github.com/zed-industries/zed" }

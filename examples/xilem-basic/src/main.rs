@@ -1,56 +1,16 @@
-use url::Url;
-use xilem::{view::flex, App, AppLauncher, WidgetView};
-
 use nexum_core::Config;
 
-#[derive(Debug)]
-enum AppMessage {
-    DeepLink(Vec<Url>),
-    Clear,
-}
-
-struct AppState {
-    last_urls: Option<Vec<Url>>,
-}
-
-impl AppState {
-    fn new() -> Self {
-        Self { last_urls: None }
-    }
-}
-
-fn app_logic(state: &mut AppState) -> impl WidgetView<AppMessage> {
+fn main() {
     let config = Config {
         schemes: vec!["myapp".to_string()],
         app_links: vec![],
     };
 
-    flex((
-        xilem::view::label("Hello, deep links!".to_string()),
-        xilem::view::label(match &state.last_urls {
-            Some(urls) => format!("Last URL: {:?}", urls),
-            None => "No deep link received".to_string(),
-        }),
-        xilem::view::button("Clear", |_| AppMessage::Clear),
-        nexum_xilem::deep_link_task(config, AppMessage::DeepLink),
-    ))
-}
+    let rx = nexum_xilem::create_deep_link_listener(config);
 
-impl App for AppState {
-    type Message = AppMessage;
+    println!("Xilem deep link listener started.");
 
-    fn update(&mut self, message: Self::Message) {
-        match message {
-            AppMessage::DeepLink(urls) => self.last_urls = Some(urls),
-            AppMessage::Clear => self.last_urls = None,
-        }
+    while let Ok(urls) = rx.recv_blocking() {
+        println!("Received deep link: {:?}", urls);
     }
-
-    fn view(&mut self) -> xilem::WidgetView<Self::Message> {
-        app_logic(self)
-    }
-}
-
-fn main() {
-    AppLauncher::new(AppState::new()).run();
 }

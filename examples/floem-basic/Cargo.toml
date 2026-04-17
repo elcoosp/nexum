@@ -6,5 +6,5 @@ edition = "2021"
 [dependencies]
 nexum-floem = { path = "../../nexum-floem" }
 nexum-core = { path = "../../nexum-core" }
-floem = "0.1"
+floem = "0.2"
 url = "2.5"

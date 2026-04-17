@@ -1,32 +1,29 @@
-use floem::{
-    reactive::{create_effect, create_rw_signal, RwSignal},
-    views::{label, v_stack, Decorators},
-    View,
-};
+use floem::prelude::{SignalGet, SignalUpdate};
+use floem::reactive::create_rw_signal;
+use floem::views::{label, v_stack};
+use floem::View;
 use nexum_core::Config;
-use nexum_floem::spawn_deep_link_listener;
-use url::Url;
+use nexum_floem::create_deep_link_listener;
 
 fn app_view() -> impl View {
-    let deep_link_urls: RwSignal<Option<Vec<Url>>> = create_rw_signal(None);
+    let deep_link_urls = create_rw_signal(String::from("No deep link received"));
     let config = Config {
         schemes: vec!["myapp".to_string()],
         app_links: vec![],
     };
-    spawn_deep_link_listener(config, deep_link_urls);
+    let rx = create_deep_link_listener(config);
 
-    let display_text = create_rw_signal("No deep link received".to_string());
-    create_effect(move |_| {
-        if let Some(urls) = deep_link_urls.get() {
-            display_text.set(format!("Last URL: {:?}", urls));
+    let urls_signal = deep_link_urls;
+    std::thread::spawn(move || {
+        while let Ok(urls) = rx.recv_blocking() {
+            urls_signal.set(format!("Last URL: {:?}", urls));
         }
     });
 
     v_stack((
         label(|| "Hello, deep links!".to_string()),
-        label(move || display_text.get()),
+        label(move || deep_link_urls.get()),
     ))
-    .style(|s| s.padding(20.0))
 }
 
 fn main() {

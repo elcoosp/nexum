@@ -1,4 +1,5 @@
 use gpui::*;
+use gpui_platform::application;
 use nexum_core::Config;
 use nexum_gpui::Nexum;
 
@@ -26,16 +27,16 @@ fn main() {
 
     let nexum = Nexum::new(config);
 
-    Application::new().run(move |cx: &mut App| {
-        nexum.spawn_listener(cx);
-
+    application().run(move |cx: &mut App| {
         Nexum::on_deep_link(cx, |urls, _cx| {
             println!("Deep link received: {:?}", urls);
         });
 
-        cx.open_window(WindowOptions::default(), |_, cx| {
-            cx.new(|_| HelloWorld)
-        })
-        .unwrap();
+        nexum.spawn_listener(cx);
+
+        cx.open_window(WindowOptions::default(), |_, cx| cx.new(|_| HelloWorld))
+            .unwrap();
+
+        cx.activate(true);
     });
 }

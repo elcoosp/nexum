@@ -7,5 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 nexum-core = { path = "../nexum-core", version = "0.1.0" }
-floem = "0.1"
+floem = "0.2"
+
+async-channel = "2.3"
 url = "2.5"

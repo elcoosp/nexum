@@ -2,23 +2,19 @@ use crate::{Config, Error};
 use std::sync::OnceLock;
 use url::Url;
 
-// TODO: When implementing native Apple Event handling, add the `objc` crate
-// dependency and use it to register an event handler for `AEGetParamDesc`
-// to intercept `openURLs` events directly from Rust without Swift bridging.
-
 static EVENT_TX: OnceLock<async_channel::Sender<Vec<Url>>> = OnceLock::new();
 
 /// Stores the event sender for use by the Apple Event handler.
+#[allow(dead_code)]
 pub fn set_event_tx(tx: async_channel::Sender<Vec<Url>>) {
-    let _ = EVENT_TX.set(tx);
+    EVENT_TX.set(tx).ok();
 }
 
 /// Registration on macOS is a no-op; users must manually edit Info.plist.
-/// See nexum-core/README.md for setup instructions.
 pub fn register_schemes(config: &Config) -> Result<(), Error> {
     if !config.schemes.is_empty() {
         eprintln!(
-            "[nexum-core] Deep link schemes must be manually added to Info.plist. Schemes: {:?}",
+            "Nexum: Deep link schemes must be manually added to Info.plist. Schemes: {:?}",
             config.schemes
         );
     }
