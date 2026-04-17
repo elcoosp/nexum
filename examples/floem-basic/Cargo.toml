@@ -1,0 +1,10 @@
+[package]
+name = "floem-basic"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nexum-floem = { path = "../../nexum-floem" }
+nexum-core = { path = "../../nexum-core" }
+floem = "0.1"
+url = "2.5"

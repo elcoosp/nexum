@@ -1,0 +1,9 @@
+[package]
+name = "dioxus-basic"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nexum-dioxus = { path = "../../nexum-dioxus" }
+nexum-core = { path = "../../nexum-core" }
+dioxus = { version = "0.6", features = ["desktop"] }

@@ -1,0 +1,10 @@
+[package]
+name = "xilem-basic"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nexum-xilem = { path = "../../nexum-xilem" }
+nexum-core = { path = "../../nexum-core" }
+xilem = "0.1"
+url = "2.5"

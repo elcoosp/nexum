@@ -1,0 +1,9 @@
+[package]
+name = "gpui-basic"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nexum-gpui = { path = "../../nexum-gpui" }
+nexum-core = { path = "../../nexum-core" }
+gpui = "0.1"
