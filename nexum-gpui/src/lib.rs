@@ -1,5 +1,5 @@
 use async_channel::Receiver;
-use gpui::{App, AsyncApp, BorrowAppContext, Global};
+use gpui::{App, BorrowAppContext, Global};
 use nexum_core::{Config, Nexum as CoreNexum};
 use url::Url;
 
@@ -34,7 +34,10 @@ impl Nexum {
     /// Creates a new Nexum instance and registers all schemes.
     pub fn new(config: Config) -> Self {
         let inner = CoreNexum::new(config);
+
+        #[cfg(not(target_os = "macos"))]
         inner.register_all().expect("Failed to register schemes");
+
         Self { inner }
     }
 
@@ -43,7 +46,9 @@ impl Nexum {
         self.inner.event_receiver()
     }
 
-    /// Spawns a background task that listens for URLs and invokes registered callbacks.
+    /// Checks for a deep link passed at startup and triggers callbacks.
+    /// Note: Runtime deep links on macOS require a custom .app bundle AppDelegate
+    /// which is outside the scope of the public GPUI API.
     pub fn spawn_listener(&self, cx: &mut App) {
         if !cx.has_global::<DeepLinkRegistry>() {
             cx.set_global(DeepLinkRegistry {
@@ -51,18 +56,14 @@ impl Nexum {
             });
         }
 
-        let rx = self.inner.event_receiver();
-        cx.spawn(async move |cx: &mut AsyncApp| {
-            while let Ok(urls) = rx.recv().await {
-                cx.update(|cx: &mut App| {
-                    cx.update_global(|registry: &mut DeepLinkRegistry, cx| {
-                        registry.invoke(&urls, cx);
-                    });
-                });
-            }
-        })
-        .detach();
+        // Handle URLs passed via CLI arguments (e.g., OS opening `myapp://...`)
+        if let Some(urls) = self.inner.get_current() {
+            cx.update_global(|registry: &mut DeepLinkRegistry, cx| {
+                registry.invoke(&urls, cx);
+            });
+        }
     }
+
     /// Registers a callback to be invoked when a deep link is received.
     pub fn on_deep_link(cx: &mut App, callback: impl Fn(&[Url], &mut App) + Send + Sync + 'static) {
         if !cx.has_global::<DeepLinkRegistry>() {
@@ -84,7 +85,7 @@ impl Nexum {
         }
     }
 
-    /// Returns the current deep link URLs, if any.
+    /// Returns the current deep link URLs, if any (from CLI args).
     pub fn get_current(&self) -> Option<Vec<Url>> {
         self.inner.get_current()
     }
@@ -97,11 +98,5 @@ impl Nexum {
     /// Unregisters a scheme (Windows/Linux only).
     pub fn unregister(&self, scheme: &str) -> Result<(), nexum_core::Error> {
         self.inner.unregister(scheme)
-    }
-
-    /// macOS/iOS: Call this from your native app delegate.
-    #[cfg(any(target_os = "macos", target_os = "ios"))]
-    pub fn handle_open_urls(urls: Vec<String>) {
-        CoreNexum::handle_open_urls(urls);
     }
 }

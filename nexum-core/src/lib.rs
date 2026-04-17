@@ -63,13 +63,14 @@ impl Nexum {
 
     /// Returns the current deep link URLs, if any.
     /// On Windows and Linux, this checks command line arguments.
+    /// On macOS, this checks command line arguments (for testing/CLI usage).
     pub fn get_current(&self) -> Option<Vec<Url>> {
         #[cfg(target_os = "windows")]
         return platform::windows::get_current_urls();
         #[cfg(target_os = "linux")]
         return platform::linux::get_current_urls();
         #[cfg(target_os = "macos")]
-        return None;
+        return platform::macos::get_current_urls();
     }
 
     /// Checks if a scheme is registered as the default handler.

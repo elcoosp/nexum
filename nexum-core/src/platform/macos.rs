@@ -31,3 +31,14 @@ pub fn handle_open_urls(url_strings: Vec<String>) {
         let _ = tx.try_send(urls);
     }
 }
+
+/// Checks CLI arguments for a URL (useful for testing via `cargo run -- myapp://...`)
+pub fn get_current_urls() -> Option<Vec<Url>> {
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() == 2 {
+        if let Ok(url) = Url::parse(&args[1]) {
+            return Some(vec![url]);
+        }
+    }
+    None
+}
