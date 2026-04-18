@@ -7,5 +7,5 @@ edition = "2021"
 nexum-core = { path = "../nexum-core", version = "0.1.0" }
 gpui_platform = { git = "https://github.com/zed-industries/zed", features = ["font-kit", "x11", "wayland", "runtime_shaders"] }
 gpui = { git = "https://github.com/zed-industries/zed" }
-async-channel = "2.3"
+async-channel = "2.5"
 url = "2.5"

@@ -7,9 +7,10 @@ description = "Nexum Xilem Deep Link Example"
 [dependencies]
 nexum-xilem = { path = "../../nexum-xilem" }
 nexum-core = { path = "../../nexum-core" }
-xilem = "0.1"
-async-channel = "2.3"
-winit = "0.31.0-beta.2"
+xilem = "0.4"
+async-channel = "2.5"
+winit = "0.30.13"
+tokio = { version = "1", features = ["rt", "time"] }
 
 [package.metadata.bundle]
 name = "Nexum Xilem Example"
