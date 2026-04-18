@@ -45,7 +45,7 @@ fn main() {
     let handle = setup_deep_links(
         &app,
         Config {
-            schemes: vec!["myapp".to_string()],
+            schemes: vec!["gpui".to_string()],
             app_links: vec![], // Add this line
         },
     );

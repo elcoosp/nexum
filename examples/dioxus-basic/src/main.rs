@@ -4,7 +4,7 @@ use nexum_dioxus::{use_deep_link_listener, DEEP_LINK_URLS};
 
 fn app() -> Element {
     let config = Config {
-        schemes: vec!["myapp".to_string()],
+        schemes: vec!["dioxus".to_string()],
         app_links: vec![],
     };
     use_deep_link_listener(config);

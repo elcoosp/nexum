@@ -2,9 +2,22 @@
 name = "xilem-basic"
 version = "0.1.0"
 edition = "2021"
+description = "Nexum Xilem Deep Link Example"
 
 [dependencies]
 nexum-xilem = { path = "../../nexum-xilem" }
 nexum-core = { path = "../../nexum-core" }
 xilem = "0.1"
-url = "2.5"
+async-channel = "2.3"
+winit = "0.31.0-beta.2"
+
+[package.metadata.bundle]
+name = "Nexum Xilem Example"
+identifier = "com.nexum.xilem-basic"
+icon = ["icon.png"]
+version = "0.1.0"
+copyright = "MIT"
+category = "public.app-category.developer-tools"
+short_description = "Nexum Xilem Deep Link Example"
+long_description = "Example application for Nexum deep linking in Xilem."
+osx_url_schemes = ["xilem"]

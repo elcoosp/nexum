@@ -8,7 +8,7 @@ use nexum_floem::create_deep_link_listener;
 fn app_view() -> impl View {
     let deep_link_urls = create_rw_signal(String::from("No deep link received"));
     let config = Config {
-        schemes: vec!["myapp".to_string()],
+        schemes: vec!["floem".to_string()],
         app_links: vec![],
     };
     let rx = create_deep_link_listener(config);

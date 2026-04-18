@@ -21,4 +21,4 @@ copyright = "MIT"
 category = "public.app-category.developer-tools"
 short_description = "Nexum GPUI Deep Link Example"
 long_description = "Example application for Nexum deep linking in GPUI."
-osx_url_schemes = ["myapp"]
+osx_url_schemes = ["gpui"]

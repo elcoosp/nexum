@@ -16,6 +16,9 @@ pub struct DeepLinkHandle {
 }
 
 impl DeepLinkHandle {
+    pub fn recv_blocking(&self) -> Result<String, async_channel::RecvError> {
+        self.rx.recv_blocking()
+    }
     pub fn try_recv(&self) -> Option<String> {
         self.rx.try_recv().ok()
     }

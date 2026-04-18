@@ -2,11 +2,13 @@
 name = "nexum-xilem"
 version = "0.1.0"
 edition = "2021"
+
 description = "Xilem adapter for nexum deep linking"
 license = "MIT OR Apache-2.0"
-
 [dependencies]
-nexum-core = { path = "../nexum-core", version = "0.1.0" }
+nexum-core = { path = "../nexum-core" }
 async-channel = "2.3"
-xilem = "0.1"
-url = "2.5"
+objc2 = "0.6.4"
+objc2-app-kit = "0.3.2"
+objc2-foundation = "0.3.2"
+once_cell = "1.20"
