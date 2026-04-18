@@ -1,68 +1,65 @@
 use gpui::*;
 use gpui_platform::application;
-use nexum_core::Config;
-use nexum_gpui::Nexum;
+use nexum_gpui::{attach_deep_link, setup_deep_links, Config};
 
-struct HelloWorld {
-    deep_link: Option<String>,
+struct DeepLinkApp {
+    last_url: Option<String>,
 }
 
-impl Render for HelloWorld {
+impl DeepLinkApp {
+    fn set_url(&mut self, url: String) {
+        self.last_url = Some(url);
+    }
+}
+
+impl Render for DeepLinkApp {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         div()
+            .bg(rgb(0xeeeeee))
+            .size_full()
             .flex()
             .flex_col()
-            .bg(gpui::white())
-            .size_full()
             .justify_center()
             .items_center()
-            .text_xl()
-            .text_color(gpui::black())
-            .child("Hello, deep links!")
+            .gap(px(20.0))
             .child(
                 div()
-                    .mt_4()
-                    .p_4()
-                    .rounded_md()
-                    .bg(gpui::black().opacity(0.05))
-                    .text_sm()
-                    .text_color(rgb(0x666666))
-                    .child(match &self.deep_link {
+                    .text_xl()
+                    .text_color(rgb(0x000000))
+                    .child("Hello, deep links!"),
+            )
+            .child(
+                div()
+                    .text_lg()
+                    .text_color(rgb(0x333333))
+                    .child(match &self.last_url {
                         Some(url) => format!("Received: {}", url),
                         None => "Waiting for deep link...".to_string(),
                     }),
             )
     }
 }
+
 fn main() {
-    let config = Config {
-        schemes: vec!["myapp".to_string()],
-        app_links: vec![],
-    };
+    let app = application();
+    let handle = setup_deep_links(
+        &app,
+        Config {
+            schemes: vec!["myapp".to_string()],
+            app_links: vec![], // Add this line
+        },
+    );
 
-    let nexum = Nexum::new(config);
+    app.run(move |cx: &mut App| {
+        let view = cx.new(|_cx| DeepLinkApp { last_url: None });
 
-    // No tokio runtime or .enter() before this!
-    application().run(move |cx: &mut App| {
-        let view_entity = cx.new(|_| HelloWorld { deep_link: None });
-
-        Nexum::on_deep_link(cx, {
-            let view_entity = view_entity.clone();
-            move |urls, cx| {
-                if let Some(url) = urls.first() {
-                    view_entity.update(cx, |view, cx| {
-                        view.deep_link = Some(url.to_string());
-                        cx.notify();
-                    });
-                }
-            }
+        // One line – all the boilerplate is gone!
+        attach_deep_link(handle.clone(), view.clone(), cx, |view, url| {
+            view.set_url(url)
         });
 
-        nexum.spawn_listener(cx);
-
-        cx.open_window(WindowOptions::default(), |_, _cx| view_entity.clone())
+        cx.open_window(WindowOptions::default(), |_, _cx| view)
             .unwrap();
-
         cx.activate(true);
     });
 }

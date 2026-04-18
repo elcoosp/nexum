@@ -9,6 +9,8 @@ nexum-gpui = { path = "../../nexum-gpui" }
 nexum-core = { path = "../../nexum-core" }
 gpui = { git = "https://github.com/zed-industries/zed" }
 gpui_platform = { git = "https://github.com/zed-industries/zed", features = ["font-kit", "x11", "wayland", "runtime_shaders"] }
+url = "2.5.8"
+async-channel = "2.5.0"
 
 [package.metadata.bundle]
 name = "Nexum GPUI Example"
