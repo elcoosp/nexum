@@ -6,7 +6,7 @@ use std::sync::OnceLock;
 pub use dioxus::LaunchBuilder;
 pub use dioxus_desktop::Config as DesktopConfig;
 pub use dioxus_desktop::{LogicalSize, WindowBuilder};
-pub use nexum_core::{Config, DeepLinkHandle, DeepLinkHub}; // optional convenience
+pub use nexum_core::{Config, DeepLinkHandle, DeepLinkHub};
 
 // Internal channel
 static HANDLE: OnceLock<DeepLinkHandle> = OnceLock::new();
@@ -25,7 +25,6 @@ pub fn setup(config: Config) {
 
 /// Send a URL into the global channel (used internally by the event handler).
 pub fn push_deep_link(url: String) {
-    println!("[nexum_dioxus] push_deep_link called with: {}", url);
     if let Some(sender) = HUB_SENDER.get() {
         let _ = sender.try_send(url);
     } else {
