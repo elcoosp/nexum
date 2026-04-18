@@ -7,4 +7,16 @@ edition = "2021"
 nexum-floem = { path = "../../nexum-floem" }
 nexum-core = { path = "../../nexum-core" }
 floem = "0.2"
+crossbeam-channel = "0.5"
 url = "2.5"
+[package.metadata.bundle]
+name = "Nexum Floem Example"
+identifier = "com.nexum.floem-basic"
+icon = ["icon.png"]                    # optional, remove if you don't have an icon
+version = "0.1.0"
+copyright = "MIT"
+category = "public.app-category.developer-tools"
+short_description = "Nexum Floem Deep Link Example"
+long_description = "Example application for Nexum deep linking in Floem."
+osx_url_schemes = ["floem"]
+futures = "0.3"

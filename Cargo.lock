@@ -2347,6 +2347,7 @@ dependencies = [
 name = "floem-basic"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "floem",
  "nexum-core",
  "nexum-floem",
