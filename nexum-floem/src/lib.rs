@@ -220,14 +220,18 @@ pub fn setup(_config: Config) -> DeepLinkHandle {
 }
 
 #[cfg(feature = "signal")]
-pub fn create_deep_link_signal(config: Config) -> floem::reactive::RwSignal<Option<String>> {
-    use floem::reactive::{create_rw_signal, SignalUpdate};
-    let signal = create_rw_signal(None);
+pub fn setup_signal(config: Config) -> floem::reactive::ReadSignal<Option<String>> {
+    use crossbeam_channel::bounded;
+    use floem::ext_event::create_signal_from_channel;
+
+    let (tx, rx) = bounded::<String>(1);
     let handle = setup(config);
+
     std::thread::spawn(move || {
         while let Ok(url) = handle.recv_blocking() {
-            signal.set(Some(url));
+            let _ = tx.send(url);
         }
     });
-    signal
+
+    create_signal_from_channel(rx)
 }

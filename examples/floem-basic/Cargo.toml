@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-nexum-floem = { path = "../../nexum-floem" }
+nexum-floem = { path = "../../nexum-floem", features=["signal"] }
 nexum-core = { path = "../../nexum-core" }
 floem = "0.2"
 crossbeam-channel = "0.5"

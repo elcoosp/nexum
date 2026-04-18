@@ -11,9 +11,9 @@ functionality through each framework's idioms.
 
 | Crate | Framework | Integration |
 |-------|-----------|-------------|
-| `nexum-core` | — | Async channel (`async-channel`) |
-| `nexum-gpui` | GPUI (Zed) | `Global` trait + callback registry |
-| `nexum-floem` | Floem | `RwSignal` |
+| `nexum-core` | — | Blocking receiver (`std::sync::mpsc::Receiver`) |
+| `nexum-gpui` | GPUI | `Global` trait + callback registry |
+| `nexum-floem` | Floem | `ReadSignal<Option<String>>` (via `signal` feature) |
 | `nexum-xilem` | Xilem | `task` view + `MessageProxy` |
 | `nexum-dioxus` | Dioxus | `GlobalSignal` + `use_coroutine` |
 
@@ -30,12 +30,37 @@ functionality through each framework's idioms.
 Add the adapter for your framework:
 
 ```toml
-# For GPUI
+# For Floem
 [dependencies]
-nexum-gpui = "0.1"
+nexum-floem = { version = "0.1", features = ["signal"] }
 ```
 
 Then see the adapter's README and the `examples/` directory.
+
+## Floem Integration
+
+Enable the `signal` feature to use the high‑level `setup_signal` helper:
+
+```rust
+use nexum_floem::setup_signal;
+use nexum_core::Config;
+
+let config = Config {
+    schemes: vec!["myapp".to_string()],
+    app_links: vec![],
+};
+
+// Returns a reactive `ReadSignal<Option<String>>` that updates on deep links
+let url_signal = setup_signal(config);
+```
+
+Under the hood, this spawns a background thread, bridges the blocking receiver
+to a crossbeam channel, and uses Floem's `create_signal_from_channel` to
+produce a signal that wakes the UI thread only when a URL arrives.
+
+If you need more control (e.g., custom error handling), you can use the
+lower‑level `setup` function (available without the `signal` feature) and build
+your own signal.
 
 ## Building
 
