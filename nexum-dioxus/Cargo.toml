@@ -12,6 +12,4 @@ dioxus = { version = "0.7", features = ["desktop"] }
 dioxus-desktop = { version = "0.7" }
 tao = "0.34"
 dioxus-hooks = "0.7"
-crossbeam-channel = "0.5"
-tokio = { version = "1", features = ["rt", "sync"] }
 async-channel = "2.5"

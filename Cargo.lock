@@ -4317,14 +4317,12 @@ name = "nexum-dioxus"
 version = "0.1.0"
 dependencies = [
  "async-channel",
- "crossbeam-channel",
  "dioxus",
  "dioxus-desktop",
  "dioxus-hooks",
  "nexum-core",
  "nexum-platform",
  "tao",
- "tokio",
 ]
 
 [[package]]
