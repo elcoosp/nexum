@@ -1,17 +1,13 @@
 use async_channel::{unbounded, Sender};
 use nexum_core::{Config, DeepLinkHandle};
 use once_cell::sync::OnceCell;
+use xilem::core::fork;
 
 static URL_SENDER: OnceCell<Sender<String>> = OnceCell::new();
-static WAKE_FN: OnceCell<Box<dyn Fn() + Send + Sync>> = OnceCell::new();
 
 fn push_url(url: String) {
     if let Some(tx) = URL_SENDER.get() {
         let _ = tx.try_send(url);
-    }
-    // Tell the Xilem event loop to wake up and rebuild the view
-    if let Some(wake_fn) = WAKE_FN.get() {
-        wake_fn();
     }
 }
 
@@ -100,9 +96,28 @@ pub fn setup(_config: Config) -> DeepLinkHandle {
     DeepLinkHandle::new(rx)
 }
 
-/// Wires up the Xilem proxy so incoming deep links trigger a UI rebuild.
-pub fn set_wake_fn(f: impl Fn() + Send + Sync + 'static) {
-    if WAKE_FN.set(Box::new(f)).is_err() {
-        panic!("wake fn already set");
-    }
+/// Wraps a view with a background deep link listener.
+///
+/// Because Xilem tasks run on background threads, the callback must be `Send + Sync`.
+/// Fortunately, since this callback takes `&mut State` directly, you don't need `Arc<Mutex>`.
+pub fn with_deep_links<State: 'static, V: xilem::WidgetView<State>>(
+    view: V,
+    handle: DeepLinkHandle,
+    on_url: impl Fn(&mut State, String) + Send + Sync + 'static,
+) -> impl xilem::WidgetView<State> {
+    let task = xilem::view::task_raw(
+        move |proxy| {
+            let handle = handle.clone();
+            async move {
+                while let Some(url) = handle.recv().await {
+                    if proxy.message(url).is_err() {
+                        break;
+                    }
+                }
+            }
+        },
+        on_url,
+    );
+
+    fork(view, task)
 }
