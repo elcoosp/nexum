@@ -4752,6 +4752,7 @@ dependencies = [
  "dirs 5.0.1",
  "floem",
  "nexum-core",
+ "nexum-platform",
  "objc2 0.6.4",
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
@@ -4773,11 +4774,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "nexum-platform"
+version = "0.1.0"
+dependencies = [
+ "nexum-core",
+ "objc2 0.6.4",
+ "objc2-foundation 0.3.2",
+ "once_cell",
+ "windows-registry",
+]
+
+[[package]]
 name = "nexum-xilem"
 version = "0.1.0"
 dependencies = [
  "async-channel 2.5.0",
  "nexum-core",
+ "nexum-platform",
  "objc2 0.6.4",
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",

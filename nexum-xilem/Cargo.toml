@@ -7,6 +7,7 @@ description = "Xilem adapter for nexum deep linking"
 license = "MIT OR Apache-2.0"
 [dependencies]
 nexum-core = { path = "../nexum-core" }
+nexum-platform = { path = "../nexum-platform" }
 async-channel = "2.5"
 objc2 = "0.6.4"
 xilem = "0.4"

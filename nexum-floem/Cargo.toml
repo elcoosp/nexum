@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 nexum-core = { path = "../nexum-core", version = "0.1.0" }
-
+nexum-platform = { path = "../nexum-platform" }
 floem = { version = "0.2", optional = true }
 crossbeam-channel = { version = "0.5", optional = true }
 async-channel = "2.5"
@@ -22,7 +22,7 @@ rust-ini = "0.21"
 dirs = "5.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-objc2 = "0.6"
+objc2 = "0.6.4"
 objc2-foundation = "0.3"
 objc2-app-kit = "0.3"
 

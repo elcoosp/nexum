@@ -39,7 +39,7 @@ impl DeepLinkHandle {
         }
     }
 }
-
+#[derive(Debug)]
 pub struct DeepLinkHub {
     tx: Sender<String>,
     rx: Receiver<String>,
