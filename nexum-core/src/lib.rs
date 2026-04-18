@@ -1,5 +1,5 @@
-// nexum-core/src/lib.rs
 use async_channel::{unbounded, Receiver, Sender};
+
 pub struct Config {
     pub schemes: Vec<String>,
     pub app_links: Vec<AppLink>,
@@ -16,14 +16,27 @@ pub struct DeepLinkHandle {
 }
 
 impl DeepLinkHandle {
+    /// Creates a new handle from a channel receiver.
+    pub fn new(rx: Receiver<String>) -> Self {
+        Self { rx }
+    }
+
     pub fn recv_blocking(&self) -> Result<String, async_channel::RecvError> {
         self.rx.recv_blocking()
     }
+
     pub fn try_recv(&self) -> Option<String> {
         self.rx.try_recv().ok()
     }
+
     pub async fn recv(&self) -> Option<String> {
         self.rx.recv().await.ok()
+    }
+
+    pub fn drain_into(&self, out: &mut Vec<String>) {
+        while let Some(url) = self.try_recv() {
+            out.push(url);
+        }
     }
 }
 
@@ -38,14 +51,11 @@ impl DeepLinkHub {
         Self { tx, rx }
     }
 
-    /// Call this from the framework’s URL callback (e.g., GPUI’s `on_open_urls`).
     pub fn push_url(&self, url: String) {
         let _ = self.tx.try_send(url);
     }
 
     pub fn handle(&self) -> DeepLinkHandle {
-        DeepLinkHandle {
-            rx: self.rx.clone(),
-        }
+        DeepLinkHandle::new(self.rx.clone())
     }
 }

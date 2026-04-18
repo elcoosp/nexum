@@ -8667,6 +8667,8 @@ name = "xilem-basic"
 version = "0.1.0"
 dependencies = [
  "async-channel 2.5.0",
+ "masonry",
+ "masonry_winit",
  "nexum-core",
  "nexum-xilem",
  "tokio",

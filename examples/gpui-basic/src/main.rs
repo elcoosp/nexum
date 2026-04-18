@@ -1,6 +1,7 @@
 use gpui::*;
-use gpui_platform::application;
-use nexum_gpui::{attach_deep_link, setup_deep_links, Config};
+use gpui_platform::application; // Add this import
+use nexum_core::Config;
+use nexum_gpui::{attach_deep_link, setup_deep_links};
 
 struct DeepLinkApp {
     last_url: Option<String>,
@@ -41,21 +42,21 @@ impl Render for DeepLinkApp {
 }
 
 fn main() {
-    let app = application();
+    let app = application(); // Use lowercase application()
+
     let handle = setup_deep_links(
         &app,
         Config {
             schemes: vec!["gpui".to_string()],
-            app_links: vec![], // Add this line
+            app_links: vec![],
         },
     );
 
     app.run(move |cx: &mut App| {
         let view = cx.new(|_cx| DeepLinkApp { last_url: None });
 
-        // One line – all the boilerplate is gone!
-        attach_deep_link(handle.clone(), view.clone(), cx, |view, url| {
-            view.set_url(url)
+        attach_deep_link(handle, view.clone(), cx, |view, url| {
+            view.set_url(url);
         });
 
         cx.open_window(WindowOptions::default(), |_, _cx| view)
