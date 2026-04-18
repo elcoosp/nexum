@@ -1,7 +1,7 @@
 [package]
 name = "nexum-xilem"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 description = "Xilem adapter for nexum deep linking"
 license = "MIT OR Apache-2.0"

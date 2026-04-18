@@ -1,7 +1,7 @@
 [package]
 name = "nexum-gpui"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 nexum-core = { path = "../nexum-core", version = "0.1.0" }

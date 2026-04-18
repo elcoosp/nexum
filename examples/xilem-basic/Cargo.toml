@@ -1,7 +1,7 @@
 [package]
 name = "xilem-basic"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "Nexum Xilem Deep Link Example"
 
 [dependencies]
