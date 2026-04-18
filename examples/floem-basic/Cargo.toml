@@ -19,4 +19,3 @@ category = "public.app-category.developer-tools"
 short_description = "Nexum Floem Deep Link Example"
 long_description = "Example application for Nexum deep linking in Floem."
 osx_url_schemes = ["floem"]
-futures = "0.3"

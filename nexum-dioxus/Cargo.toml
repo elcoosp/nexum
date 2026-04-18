@@ -8,6 +8,10 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 nexum-core = { path = "../nexum-core", version = "0.1.0" }
 nexum-platform = { path = "../nexum-platform" }
-dioxus = { version = "0.6", features = ["desktop"] }
-dioxus-signals = "0.6"
+dioxus = { version = "0.7", features = ["desktop"] }
+dioxus-desktop = { version = "0.7" }
+tao = "0.34"
+dioxus-hooks = "0.7"
 crossbeam-channel = "0.5"
+tokio = { version = "1", features = ["rt", "sync"] }
+async-channel = "2.5"

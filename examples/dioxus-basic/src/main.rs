@@ -1,35 +1,33 @@
 use dioxus::prelude::*;
-use nexum_core::Config;
-use nexum_dioxus::{use_deep_link_listener, DEEP_LINK_URLS};
+use nexum_dioxus::{
+    launch_desktop, use_deep_link, Config, DesktopConfig, LogicalSize, WindowBuilder,
+};
 
 fn app() -> Element {
-    let config = Config {
-        schemes: vec!["dioxus".to_string()],
-        app_links: vec![],
-    };
-    use_deep_link_listener(config);
-
-    let urls = DEEP_LINK_URLS.read();
-
+    let deep_link = use_deep_link();
     rsx! {
         div {
             h1 { "Hello, deep links!" }
-            p {
-                match urls.as_ref() {
-                    Some(urls) => format!("Last URL: {:?}", urls),
-                    None => "No deep link received".to_string(),
-                }
-            }
+            p { "Last deep link: {deep_link:?}" }
         }
     }
 }
 
 fn main() {
-    dioxus::LaunchBuilder::desktop()
-        .with_cfg(
-            dioxus::desktop::Config::new().with_window(
-                dioxus::desktop::WindowBuilder::new().with_title("Nexum Dioxus Example"),
-            ),
+    let nexum_config = Config {
+        schemes: vec!["dioxus".to_string()],
+        app_links: vec![],
+    };
+
+    let desktop_config = DesktopConfig::new()
+        .with_window(
+            WindowBuilder::new()
+                .with_title("Deep Link Demo")
+                .with_inner_size(LogicalSize::new(800.0, 600.0)),
         )
-        .launch(app);
+        .with_custom_head(
+            r#"<link rel="preconnect" href="https://fonts.googleapis.com">"#.to_string(),
+        );
+
+    launch_desktop(nexum_config, desktop_config, app);
 }

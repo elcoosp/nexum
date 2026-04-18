@@ -4,6 +4,21 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+dioxus = { version = "0.7", features = ["desktop"] }
+dioxus-hooks = "0.7"
+dioxus-desktop = "0.7"
+tao = "0.34"
+
 nexum-dioxus = { path = "../../nexum-dioxus" }
 nexum-core = { path = "../../nexum-core" }
-dioxus = { version = "0.6", features = ["desktop"] }
+
+[package.metadata.bundle]
+name = "Nexum Dioxus Example"
+identifier = "com.nexum.dioxus-basic"
+icon = ["icon.png"]
+version = "0.1.0"
+copyright = "MIT"
+category = "public.app-category.developer-tools"
+short_description = "Nexum Dioxus Deep Link Example"
+long_description = "Example application for Nexum deep linking in Dioxus."
+osx_url_schemes = ["dioxus"]

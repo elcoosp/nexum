@@ -1,13 +1,14 @@
 [workspace]
 members = [
     "nexum-core",
-    "nexum-gpui",
+    "nexum-platform",
+    # "nexum-gpui",
     "nexum-floem",
     "nexum-xilem",
-    # "nexum-dioxus",
-    "examples/gpui-basic",
+    "nexum-dioxus",
+    # "examples/gpui-basic",
     "examples/floem-basic",
     "examples/xilem-basic",
-    # "examples/dioxus-basic",
+    "examples/dioxus-basic",
 ]
 resolver = "2"

@@ -10,7 +10,7 @@ pub struct AppLink {
     pub path_prefixes: Vec<String>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DeepLinkHandle {
     rx: Receiver<String>,
 }
@@ -50,7 +50,9 @@ impl DeepLinkHub {
         let (tx, rx) = unbounded();
         Self { tx, rx }
     }
-
+    pub fn sender(&self) -> Sender<String> {
+        self.tx.clone()
+    }
     pub fn push_url(&self, url: String) {
         let _ = self.tx.try_send(url);
     }

@@ -1,41 +1,79 @@
-use crossbeam_channel::bounded;
+use async_channel::Sender;
 use dioxus::prelude::*;
-use dioxus_signals::GlobalSignal;
-use nexum_core::{Config, DeepLinkHandle, DeepLinkHub};
+use std::sync::OnceLock;
 
-static DEEP_LINK: GlobalSignal<Option<String>> = Signal::global(|| None);
+// Re‑export core types and Dioxus desktop building blocks
+pub use dioxus::LaunchBuilder;
+pub use dioxus_desktop::Config as DesktopConfig;
+pub use dioxus_desktop::{LogicalSize, WindowBuilder};
+pub use nexum_core::{Config, DeepLinkHandle, DeepLinkHub}; // optional convenience
 
-/// Initializes deep linking and returns a handle to listen for URLs.
-pub fn init(config: Config) -> DeepLinkHandle {
+// Internal channel
+static HANDLE: OnceLock<DeepLinkHandle> = OnceLock::new();
+static HUB_SENDER: OnceLock<Sender<String>> = OnceLock::new();
+
+/// Must be called once before using deep links.
+/// It registers the URL schemes with the OS and sets up the global channel.
+pub fn setup(config: Config) {
     let hub = DeepLinkHub::new();
     let handle = hub.handle();
+    HANDLE.set(handle).unwrap();
+    HUB_SENDER.set(hub.sender()).unwrap();
     nexum_platform::set_hub(hub);
     nexum_platform::register(&config);
-    handle
 }
 
-/// A hook that provides a reactive signal updated with received deep link URLs.
-pub fn use_deep_link(handle: DeepLinkHandle) -> Signal<Option<String>> {
+/// Send a URL into the global channel (used internally by the event handler).
+pub fn push_deep_link(url: String) {
+    println!("[nexum_dioxus] push_deep_link called with: {}", url);
+    if let Some(sender) = HUB_SENDER.get() {
+        let _ = sender.try_send(url);
+    } else {
+        println!("[nexum_dioxus] ERROR: HUB_SENDER not set");
+    }
+}
+
+/// Hook to read the latest deep link inside a Dioxus component.
+pub fn use_deep_link() -> Signal<Option<String>> {
     let mut signal = use_signal(|| None);
+    let handle = HANDLE
+        .get()
+        .expect("nexum_dioxus::setup not called")
+        .clone();
 
-    use_coroutine(|_rx: UnboundedReceiver<()>| async move {
-        let (tx, rx) = bounded::<String>(1);
-        std::thread::spawn(move || {
-            while let Ok(url) = handle.recv_blocking() {
-                let _ = tx.send(url);
+    use_future(move || {
+        let handle = handle.clone();
+        async move {
+            while let Some(url) = handle.recv().await {
+                signal.set(Some(url));
             }
-        });
-
-        while let Ok(url) = rx.recv() {
-            signal.set(Some(url));
         }
     });
 
     signal
 }
 
-/// Convenience: initializes and returns a signal directly.
-pub fn init_signal(config: Config) -> Signal<Option<String>> {
-    let handle = init(config);
-    use_deep_link(handle)
+/// Attach the deep‑link event handler to a `DesktopConfig`.
+/// Use this if you want to build the config manually before launching.
+pub fn with_deep_link_handler(mut config: DesktopConfig) -> DesktopConfig {
+    config = config.with_custom_event_handler(|event, _| {
+        if let tao::event::Event::Opened { urls } = event {
+            if let Some(url) = urls.first() {
+                push_deep_link(url.to_string());
+            }
+        }
+    });
+    config
+}
+
+/// One‑stop launch function: sets up deep links, attaches the handler, and launches the app.
+/// The caller provides the full `DesktopConfig` (window, custom head, etc.).
+pub fn launch_desktop(
+    nexum_config: Config,
+    desktop_config: DesktopConfig,
+    app: fn() -> Element, // <-- function pointer, not generic
+) {
+    setup(nexum_config);
+    let final_config = with_deep_link_handler(desktop_config);
+    LaunchBuilder::new().with_cfg(final_config).launch(app);
 }

@@ -11,7 +11,7 @@ pub fn setup(config: Config) -> DeepLinkHandle {
 }
 
 #[cfg(feature = "signal")]
-pub fn setup_signal(config: Config) -> floem::reactive::ReadSignal<Option<String>> {
+pub fn signal(config: Config) -> floem::reactive::ReadSignal<Option<String>> {
     use crossbeam_channel::bounded;
     use floem::ext_event::create_signal_from_channel;
 

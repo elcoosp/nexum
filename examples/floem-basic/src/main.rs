@@ -1,9 +1,8 @@
 use floem::prelude::*;
 use floem::reactive::ReadSignal;
 use floem::views::{label, v_stack};
-use floem::View;
 use nexum_core::Config;
-use nexum_floem::setup_signal;
+use nexum_floem::signal;
 
 fn app_view(url_signal: ReadSignal<Option<String>>) -> impl View {
     v_stack((
@@ -22,7 +21,7 @@ fn main() {
         app_links: vec![],
     };
 
-    let url_signal = setup_signal(config);
+    let url_signal = signal(config);
 
     floem::launch(move || app_view(url_signal));
 }
