@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/logo.png" alt="Nexum Logo" width="150"/>
+  <img src="docs/logo.png" alt="Nexum Logo" width="300"/>
   <p>
     <strong>Framework-agnostic deep linking for Rust</strong><br/>
     A unified API for registering custom URL schemes and receiving deep-link events across Windows, macOS, and Linux.
