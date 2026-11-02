@@ -67,3 +67,5 @@ jobs:
       - run: cargo publish -p nexum-floem --no-verify --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
       - run: cargo publish -p nexum-xilem --no-verify --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
       - run: cargo publish -p nexum-dioxus --no-verify --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - run: cargo publish -p nexum-macros --no-verify --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - run: cargo publish -p nexum --no-verify --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
