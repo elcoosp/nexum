@@ -38,6 +38,22 @@ mod windows;
 
 static HUB: OnceLock<DeepLinkHub> = OnceLock::new();
 
+#[cfg(all(feature = "single-instance", any(unix, windows)))]
+pub mod single_instance;
+
+/// `Info.plist` helpers: `CFBundleURLTypes` generation and validation for
+/// Apple bundles.
+pub mod plist;
+
+/// Android and iOS deep-link intake and bundle-declaration generators.
+pub mod mobile;
+
+/// macOS only: validates that the bundle's `Info.plist` declares every
+/// configured scheme. See [`nexum_platform::plist::missing_schemes`] for
+/// the cross-platform core of the check.
+#[cfg(target_os = "macos")]
+pub use macos::validate_bundle;
+
 /// Returns the global hub if it has been initialized.
 #[must_use]
 pub fn hub() -> Option<&'static DeepLinkHub> {
@@ -139,7 +155,26 @@ where
 /// Returns [`Error::HubAlreadySet`] when the hub was already installed, or
 /// any platform registration error (see [`register`]).
 pub fn init(config: &Config) -> Result<DeepLinkHandle> {
-    let hub = DeepLinkHub::new();
+    init_with(config, DeepLinkHub::new())
+}
+
+/// [`init`] with an explicitly constructed hub.
+///
+/// Use this to install a [bounded](nexum_core::DeepLinkHub::bounded) hub:
+///
+/// ```no_run
+/// use nexum_core::{Config, DeepLinkHub};
+/// use nexum_platform::init_with;
+///
+/// let config = Config::builder().scheme("myapp").build().expect("valid config");
+/// let handle = init_with(&config, DeepLinkHub::bounded(16)).expect("init failed");
+/// ```
+///
+/// # Errors
+///
+/// Returns [`Error::HubAlreadySet`] when the hub was already installed, or
+/// any platform registration error (see [`register`]).
+pub fn init_with(config: &Config, hub: DeepLinkHub) -> Result<DeepLinkHandle> {
     let handle = hub.handle();
     set_hub(hub)?;
     register(config)?;
@@ -167,6 +202,16 @@ mod integration {
             Err(Error::HubNotSet)
         ));
         assert!(hub().is_none());
+
+        // The single-instance hand-off also refuses to run without a hub.
+        #[cfg(all(feature = "single-instance", any(unix, windows)))]
+        {
+            use crate::single_instance;
+            let error =
+                single_instance::acquire_in(Path::new("/nonexistent"), &Config::new(["x"]), &[])
+                    .expect_err("hub not set");
+            assert!(matches!(error, Error::HubNotSet));
+        }
 
         let tmp = tempfile::tempdir().expect("tempdir");
         let fake_bin = tmp.path().join("bin");
@@ -254,6 +299,87 @@ mod integration {
         // Linux-only: error paths of the desktop-entry registration.
         #[cfg(target_os = "linux")]
         linux_error_paths(&config, &tmp);
+
+        // Full single-instance lifecycle against a real local socket.
+        #[cfg(all(feature = "single-instance", any(unix, windows)))]
+        single_instance_flow(&config, &handle, tmp.path());
+    }
+
+    /// Covers the single-instance hand-off against a real socket: primary
+    /// acquisition, a second instance handing off its URLs, shutdown
+    /// cleanup and the stale-socket error path.
+    #[cfg(all(feature = "single-instance", any(unix, windows)))]
+    fn single_instance_flow(config: &Config, handle: &DeepLinkHandle, dir: &Path) {
+        use crate::single_instance::{self, expect_handoff, expect_primary};
+
+        let si_dir = dir.join("single-instance");
+        std::fs::create_dir_all(&si_dir).expect("single-instance dir");
+
+        // The first "launch" becomes the primary.
+        let guard =
+            expect_primary(single_instance::acquire_in(&si_dir, config, &[]).expect("primary"));
+
+        // The second "launch" hands its URLs over; they arrive in the hub
+        // of this process as regular system events.
+        let urls = [
+            "nexumtest://from-second-instance".to_owned(),
+            "nexumtest://second-extra".to_owned(),
+        ];
+        let forwarded =
+            expect_handoff(&single_instance::acquire_in(&si_dir, config, &urls).expect("hand-off"));
+        assert_eq!(forwarded, urls.len());
+        for url in urls {
+            let event = handle.recv_event_blocking().expect("forwarded event");
+            assert_eq!(event.url, url);
+            assert_eq!(event.source, Source::System);
+        }
+
+        // Dropping the first guard releases the endpoint: the next launch
+        // can become the primary again. The new primary is kept alive until
+        // the socket file has been located for the stale-socket test below.
+        drop(guard);
+        let guard =
+            expect_primary(single_instance::acquire_in(&si_dir, config, &[]).expect("re-acquire"));
+
+        // A stale socket file (previous instance crashed without cleanup)
+        // is reported instead of mis-reported as "another instance".
+        #[cfg(unix)]
+        {
+            use std::os::unix::net::UnixListener;
+            let socket_path = std::fs::read_dir(&si_dir)
+                .expect("list socket dir")
+                .filter_map(Result::ok)
+                .map(|entry| entry.path())
+                .next()
+                .expect("socket file");
+            drop(guard);
+            assert!(!socket_path.exists(), "guard drop removes the socket file");
+
+            // Simulate a crashed instance: bind the socket file and
+            // immediately drop the listener, so the file exists but no
+            // process answers connections.
+            {
+                let _ = UnixListener::bind(&socket_path).expect("create stale socket");
+            }
+            let error = single_instance::acquire_in(&si_dir, config, &[])
+                .expect_err("stale socket must fail");
+            assert!(matches!(error, Error::Platform(_)));
+            assert!(error.to_string().contains("stale single-instance socket"));
+            std::fs::remove_file(&socket_path).expect("remove stale socket");
+
+            // A runtime directory that cannot hold the socket surfaces as
+            // an I/O error.
+            let error = single_instance::acquire_in(&dir.join("missing-subdir"), config, &[])
+                .expect_err("unusable dir");
+            assert!(matches!(error, Error::Io(_)));
+        }
+        #[cfg(windows)]
+        drop(guard);
+
+        // The public entry point resolves the runtime directory itself.
+        drop(expect_primary(
+            single_instance::acquire(config, &[]).expect("public acquire"),
+        ));
     }
 
     /// Covers the failure branches of the Linux registration backend with
