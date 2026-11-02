@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = [
+    "nexum",
+    "nexum-macros",
     "nexum-core",
     "nexum-platform",
     "nexum-floem",
@@ -15,7 +17,7 @@ members = [
 # It is built and verified separately by its own README instructions.
 
 [workspace.package]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
@@ -38,6 +40,7 @@ objc2 = "0.6.5"
 objc2-foundation = { version = "0.3.2", features = [
     "NSAppleEventManager",
     "NSAppleEventDescriptor",
+    "NSBundle",
     "NSString",
 ] }
 # Framework adapters
