@@ -69,7 +69,7 @@ pub fn signal(config: &Config) -> floem::reactive::ReadSignal<Option<String>> {
 
     std::thread::Builder::new()
         .name("nexum-floem".to_owned())
-        .spawn(move || relay_urls(handle, tx))
+        .spawn(move || relay_urls(&handle, &tx))
         .expect("nexum-floem: failed to spawn the bridge thread");
 
     create_signal_from_channel(rx)
@@ -80,7 +80,7 @@ pub fn signal(config: &Config) -> floem::reactive::ReadSignal<Option<String>> {
 /// Stops when the hub shuts down (the handle's channel disconnects) or when
 /// the receiving end is dropped — the bridge thread then simply ends.
 #[cfg(feature = "signal")]
-fn relay_urls(handle: DeepLinkHandle, tx: crossbeam_channel::Sender<String>) {
+fn relay_urls(handle: &DeepLinkHandle, tx: &crossbeam_channel::Sender<String>) {
     while let Ok(url) = handle.recv_blocking() {
         if tx.send(url).is_err() {
             break;
@@ -104,7 +104,7 @@ mod tests {
         hub.push_url("myapp://first");
 
         let (tx, rx) = bounded(1);
-        let bridge = std::thread::spawn(move || relay_urls(handle, tx));
+        let bridge = std::thread::spawn(move || relay_urls(&handle, &tx));
 
         let url = rx
             .recv_timeout(Duration::from_secs(5))
@@ -122,7 +122,7 @@ mod tests {
         let handle = hub.handle();
 
         let (tx, rx) = bounded(1);
-        let bridge = std::thread::spawn(move || relay_urls(handle, tx));
+        let bridge = std::thread::spawn(move || relay_urls(&handle, &tx));
 
         drop(rx);
         hub.push_url("myapp://ignored");
