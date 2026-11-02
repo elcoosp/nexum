@@ -13,7 +13,13 @@ categories.workspace = true
 readme = "README.md"
 
 [dependencies]
-nexum-core = { path = "../nexum-core", version = "0.2.0" }
+nexum-core = { path = "../nexum-core", version = "0.3.0" }
+
+[features]
+default = []
+# Single-instance hand-off over a local socket: a second launch forwards
+# its deep-link URLs to the running instance and exits.
+single-instance = []
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-registry.workspace = true
