@@ -27,6 +27,11 @@ pub enum Error {
     #[error("the deep-link channel has been shut down")]
     HubClosed,
 
+    /// A [bounded](nexum_core::DeepLinkHub::bounded) hub queue is full and
+    /// the push was non-blocking.
+    #[error("the bounded deep-link queue is full")]
+    QueueFull,
+
     /// A deep-link URL could not be parsed as a [`url::Url`].
     #[error("`{0}` is not a valid URL: {1}")]
     MalformedUrl(String, #[source] url::ParseError),
@@ -73,6 +78,10 @@ mod tests {
         assert_eq!(
             Error::HubClosed.to_string(),
             "the deep-link channel has been shut down"
+        );
+        assert_eq!(
+            Error::QueueFull.to_string(),
+            "the bounded deep-link queue is full"
         );
         assert_eq!(
             Error::Platform("boom".into()).to_string(),
