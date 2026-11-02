@@ -1,14 +1,65 @@
 [workspace]
+resolver = "3"
 members = [
     "nexum-core",
     "nexum-platform",
-    # "nexum-gpui",
     "nexum-floem",
     "nexum-xilem",
     "nexum-dioxus",
-    # "examples/gpui-basic",
     "examples/floem-basic",
     "examples/xilem-basic",
     "examples/dioxus-basic",
 ]
-resolver = "2"
+# `nexum-gpui` is intentionally not a workspace member: it tracks Zed's `main`
+# branch through a git dependency, which is far too heavy for routine CI.
+# It is built and verified separately by its own README instructions.
+
+[workspace.package]
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+authors = ["elcoosp"]
+repository = "https://github.com/elcoosp/nexum"
+homepage = "https://github.com/elcoosp/nexum"
+keywords = ["deep-link", "url-scheme", "cross-platform", "gui", "desktop"]
+categories = ["gui", "os"]
+
+[workspace.dependencies]
+# Core
+async-channel = "2.5.0"
+url = "2.5.8"
+thiserror = "2.0.21"
+futures-core = "0.3.31"
+# Platform backends
+dirs = "7.0.0"
+windows-registry = "0.100.0"
+objc2 = "0.6.5"
+objc2-foundation = { version = "0.3.2", features = [
+    "NSAppleEventManager",
+    "NSAppleEventDescriptor",
+    "NSString",
+] }
+# Framework adapters
+floem = "0.2.0"
+crossbeam-channel = "0.5.17"
+xilem = "0.4.0"
+dioxus = { version = "0.7.10", features = ["desktop"] }
+dioxus-desktop = "0.7.10"
+# MUST stay aligned with the tao version required by dioxus-desktop (0.34):
+# the adapter pattern-matches tao's event enum, so both crates need to see
+# the identical type.
+tao = "0.34.8"
+
+[workspace.lints.rust]
+missing_docs = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+
+# Line-tables-only debug info keeps test/example binaries an order of
+# magnitude smaller while keeping backtraces useful.
+[profile.dev]
+debug = 1
