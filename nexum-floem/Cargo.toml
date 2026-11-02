@@ -13,8 +13,8 @@ categories.workspace = true
 readme = "README.md"
 
 [dependencies]
-nexum-core = { path = "../nexum-core", version = "0.2.0" }
-nexum-platform = { path = "../nexum-platform", version = "0.2.0" }
+nexum-core = { path = "../nexum-core", version = "0.3.0" }
+nexum-platform = { path = "../nexum-platform", version = "0.3.0" }
 floem = { workspace = true, optional = true }
 crossbeam-channel = { workspace = true, optional = true }
 
