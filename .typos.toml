@@ -1,0 +1,28 @@
+# typos configuration (https://github.com/crate-ci/typos)
+# Run in CI by taiki-e/checkout-action + typos-action (see security.yml).
+
+[files]
+# Never scan build artefacts or lockfiles.
+extend-exclude = ["target", "Cargo.lock"]
+
+[default]
+# Check identifiers as well as prose; the codebase is ASCII-first.
+check-filenames = true
+
+[type.rust]
+extend-glob = ["**/*.rs"]
+
+[type.markdown]
+# Markdown often quotes external identifiers and code snippets.
+extend-glob = ["**/*.md"]
+
+# Project vocabulary: names that are legitimate but unknown to the
+# spellchecker.
+[default.extend-words]
+nexum = "nexum"
+floem = "floem"
+xilem = "xilem"
+dioxus = "dioxus"
+gpui = "gpui"
+tao = "tao"
+Xdg = "Xdg"
