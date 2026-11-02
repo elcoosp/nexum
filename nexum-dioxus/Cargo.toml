@@ -13,8 +13,8 @@ categories.workspace = true
 readme = "README.md"
 
 [dependencies]
-nexum-core = { path = "../nexum-core", version = "0.2.0" }
-nexum-platform = { path = "../nexum-platform", version = "0.2.0" }
+nexum-core = { path = "../nexum-core", version = "0.3.0" }
+nexum-platform = { path = "../nexum-platform", version = "0.3.0" }
 dioxus.workspace = true
 dioxus-desktop.workspace = true
 # Aligned with the tao required by dioxus-desktop (see workspace manifest).
