@@ -1,18 +1,22 @@
 [package]
 name = "floem-basic"
-version = "0.1.0"
-edition = "2024"
+description = "Nexum Floem deep-link example"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
 
 [dependencies]
-nexum-floem = { path = "../../nexum-floem", features=["signal"] }
-nexum-core = { path = "../../nexum-core" }
-floem = "0.2"
-crossbeam-channel = "0.5"
-url = "2.5"
+nexum-floem = { path = "../../nexum-floem", features = ["signal"] }
+floem.workspace = true
+
 [package.metadata.bundle]
 name = "Nexum Floem Example"
 identifier = "com.nexum.floem-basic"
-icon = ["icon.png"]                    # optional, remove if you don't have an icon
+icon = ["icon.png"]
 version = "0.1.0"
 copyright = "MIT"
 category = "public.app-category.developer-tools"
