@@ -1,5 +1,5 @@
 use gpui::*;
-use gpui_platform::application; // Add this import
+use gpui_platform::application;
 use nexum_core::Config;
 use nexum_gpui::{attach_deep_link, setup_deep_links};
 
@@ -34,7 +34,7 @@ impl Render for DeepLinkApp {
                     .text_lg()
                     .text_color(rgb(0x333333))
                     .child(match &self.last_url {
-                        Some(url) => format!("Received: {}", url),
+                        Some(url) => format!("Received: {url}"),
                         None => "Waiting for deep link...".to_string(),
                     }),
             )
@@ -42,25 +42,20 @@ impl Render for DeepLinkApp {
 }
 
 fn main() {
-    let app = application(); // Use lowercase application()
+    let app = application();
 
-    let handle = setup_deep_links(
-        &app,
-        Config {
-            schemes: vec!["gpui".to_string()],
-            app_links: vec![],
-        },
-    );
+    let config = Config::builder().scheme("gpui").build().expect("valid config");
+    let handle = setup_deep_links(&app, &config).expect("deep link setup failed");
 
     app.run(move |cx: &mut App| {
         let view = cx.new(|_cx| DeepLinkApp { last_url: None });
 
-        attach_deep_link(handle, view.clone(), cx, |view, url| {
+        attach_deep_link(handle, view.clone(), cx, |view, _cx, url| {
             view.set_url(url);
         });
 
         cx.open_window(WindowOptions::default(), |_, _cx| view)
-            .unwrap();
+            .expect("failed to open window");
         cx.activate(true);
     });
 }
