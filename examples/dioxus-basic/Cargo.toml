@@ -1,16 +1,17 @@
 [package]
 name = "dioxus-basic"
-version = "0.1.0"
-edition = "2024"
+description = "Nexum Dioxus deep-link example"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
 
 [dependencies]
-dioxus = { version = "0.7", features = ["desktop"] }
-dioxus-hooks = "0.7"
-dioxus-desktop = "0.7"
-tao = "0.34"
-
 nexum-dioxus = { path = "../../nexum-dioxus" }
-nexum-core = { path = "../../nexum-core" }
+dioxus.workspace = true
 
 [package.metadata.bundle]
 name = "Nexum Dioxus Example"
