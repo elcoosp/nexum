@@ -1,20 +1,14 @@
-use nexum_core::Config;
+use nexum_xilem::Config;
 use nexum_xilem::{setup, with_deep_links};
-use xilem::winit::event_loop::EventLoop;
-use xilem::{
-    view::{flex_col, label},
-    WidgetView,
-    Xilem, // Use Xilem instead of App
-};
+use xilem::view::{flex_col, label};
+use xilem::{WidgetView, Xilem};
 
 #[derive(Default)]
 struct AppState {
     last_url: Option<String>,
 }
 
-// The app logic function now returns the wrapped view directly
 fn app_logic(state: &mut AppState) -> impl WidgetView<AppState> + use<> {
-    // Use flex_col for a vertical stack
     let content = flex_col((
         label("Hello, deep links!"),
         label(
@@ -25,25 +19,23 @@ fn app_logic(state: &mut AppState) -> impl WidgetView<AppState> + use<> {
         ),
     ));
 
-    // Wrap the content with deep link handling
     with_deep_links(content, |state: &mut AppState, url| {
         state.last_url = Some(url);
     })
 }
 
 fn main() {
-    let config = Config {
-        schemes: vec!["xilem".to_string()],
-        app_links: vec![],
-    };
-    setup(config);
+    let config = Config::builder()
+        .scheme("xilem")
+        .build()
+        .expect("valid config");
+    setup(&config).expect("deep link setup failed");
 
-    // Create the Xilem app with state and logic, then run it
     Xilem::new_simple(
         AppState::default(),
         app_logic,
         xilem::WindowOptions::new("Deep Link Demo"),
     )
-    .run_in(EventLoop::with_user_event())
-    .unwrap();
+    .run_in(xilem::winit::event_loop::EventLoop::with_user_event())
+    .expect("xilem app failed to run");
 }
