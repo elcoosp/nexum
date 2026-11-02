@@ -17,8 +17,8 @@ readme = "README.md"
 # a very large dependency graph; build them explicitly when needed.
 
 [dependencies]
-nexum-core = { path = "../nexum-core", version = "0.2.0" }
-nexum-platform = { path = "../nexum-platform", version = "0.2.0" }
+nexum-core = { path = "../nexum-core", version = "0.3.0" }
+nexum-platform = { path = "../nexum-platform", version = "0.3.0" }
 gpui_platform = { git = "https://github.com/zed-industries/zed", features = [
     "font-kit",
     "x11",
