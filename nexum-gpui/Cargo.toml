@@ -1,11 +1,31 @@
 [package]
 name = "nexum-gpui"
-version = "0.1.0"
-edition = "2024"
+description = "GPUI adapter for nexum deep linking"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+
+# NOTE: this crate is *not* a workspace member (see the root Cargo.toml).
+# `gpui`/`gpui_platform` are git dependencies on zed-industries/zed and pull in
+# a very large dependency graph; build them explicitly when needed.
 
 [dependencies]
-nexum-core = { path = "../nexum-core", version = "0.1.0" }
-gpui_platform = { git = "https://github.com/zed-industries/zed", features = ["font-kit", "x11", "wayland", "runtime_shaders"] }
+nexum-core = { path = "../nexum-core", version = "0.2.0" }
+nexum-platform = { path = "../nexum-platform", version = "0.2.0" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", features = [
+    "font-kit",
+    "x11",
+    "wayland",
+    "runtime_shaders",
+] }
 gpui = { git = "https://github.com/zed-industries/zed" }
-async-channel = "2.5"
-url = "2.5"
+
+[lints]
+workspace = true
