@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 use nexum_dioxus::{
-    launch_desktop, use_deep_link, Config, DesktopConfig, LogicalSize, WindowBuilder,
+    Config, DesktopConfig, LogicalSize, WindowBuilder, launch_desktop, use_deep_link,
 };
 
 fn app() -> Element {
@@ -14,10 +14,10 @@ fn app() -> Element {
 }
 
 fn main() {
-    let nexum_config = Config {
-        schemes: vec!["dioxus".to_string()],
-        app_links: vec![],
-    };
+    let nexum_config = Config::builder()
+        .scheme("dioxus")
+        .build()
+        .expect("valid config");
 
     let desktop_config = DesktopConfig::new()
         .with_window(
@@ -29,5 +29,5 @@ fn main() {
             r#"<link rel="preconnect" href="https://fonts.googleapis.com">"#.to_string(),
         );
 
-    launch_desktop(nexum_config, desktop_config, app);
+    launch_desktop(&nexum_config, desktop_config, app);
 }
