@@ -109,6 +109,30 @@ jobs:
           key: msrv
       - run: cargo check -p nexum-core -p nexum-platform
 
+  cross-target:
+    name: Cross-target type check (${{ matrix.target }})
+    # The cfg-gated backends (macOS NSBundle validator, Windows registry,
+    # Android/iOS intake) never compile on the Linux test host; type-check
+    # them on their real targets so typos cannot hide behind `#[cfg]`.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-apple-darwin
+          - x86_64-pc-windows-gnu
+          - aarch64-linux-android
+          - aarch64-apple-ios
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2.9.3
+        with:
+          key: cross-${{ matrix.target }}
+      - run: cargo check -p nexum-core -p nexum-platform --all-features --target ${{ matrix.target }}
+
   docs:
     name: Documentation
     runs-on: ubuntu-latest
