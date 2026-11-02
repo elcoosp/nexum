@@ -1,22 +1,30 @@
 [package]
 name = "nexum-core"
-version = "0.1.0"
-edition = "2024"
-description = "Framework-agnostic deep linking for Rust"
-license = "MIT OR Apache-2.0"
+description = "Framework-agnostic deep-linking primitives for Rust"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
 
 [dependencies]
-url = "2.5"
-async-channel = "2.5"
-thiserror = "2.0"
+async-channel.workspace = true
+url.workspace = true
+thiserror.workspace = true
+futures-core = { workspace = true, optional = true }
 
-[target.'cfg(target_os = "windows")'.dependencies]
-windows-registry = "0.5"
+[features]
+default = []
+# Turns `DeepLinkHandle::into_stream` on (adds `futures-core`).
+stream = ["dep:futures-core"]
 
-[target.'cfg(target_os = "linux")'.dependencies]
-rust-ini = "0.21"
-dirs = "5.0"
+[dev-dependencies]
+futures = { version = "0.3.31", default-features = false, features = ["std", "async-await", "executor"] }
 
-[target.'cfg(target_os = "macos")'.dependencies]
-objc2 = "0.6.4"
-objc2-foundation = "0.3.2"
+[lints]
+workspace = true
