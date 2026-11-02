@@ -8,11 +8,11 @@ use nexum_core::{Config, Error, Result};
 use objc2::rc::Retained;
 use objc2::{MainThreadOnly, define_class, msg_send, sel};
 use objc2_foundation::{
-    MainThreadMarker, NSAppleEventDescriptor, NSAppleEventManager, NSObject, NSObjectProtocol,
-    NSString,
+    MainThreadMarker, NSAppleEventDescriptor, NSAppleEventManager, NSBundle, NSObject,
+    NSObjectProtocol, NSString,
 };
 
-use super::push_launch_url;
+use super::{plist, push_launch_url};
 
 pub(crate) fn register(_config: &Config) -> Result<()> {
     register_delegate()
@@ -89,4 +89,42 @@ pub fn register_delegate() -> Result<()> {
     // The handler must outlive the event manager; leak it deliberately.
     std::mem::forget(handler);
     Ok(())
+}
+
+/// Validates that the application bundle's `Info.plist` declares every
+/// configured scheme under `CFBundleURLTypes`.
+///
+/// macOS only routes `myapp://` links to a bundle that declared the scheme;
+/// a missing declaration is the single most common cause of "the app never
+/// receives its deep links". Call this once during development/startup:
+///
+/// ```no_run
+/// use nexum_core::Config;
+/// use nexum_platform::validate_bundle;
+///
+/// let config = Config::builder().scheme("myapp").build().expect("valid config");
+/// for missing in validate_bundle(&config).expect("plist readable") {
+///     eprintln!("scheme `{missing}` is missing from Info.plist CFBundleURLTypes");
+/// }
+/// ```
+///
+/// The plist is read from the running bundle (`Contents/Info.plist` on
+/// macOS, `Info.plist` on iOS) and compared with the pure validator from
+/// [`crate::plist`].
+///
+/// # Errors
+///
+/// Returns [`Error::Io`] when the bundle's `Info.plist` cannot be read.
+pub fn validate_bundle(config: &Config) -> Result<Vec<String>> {
+    let bundle_path = NSBundle::mainBundle().bundlePath().to_string();
+    let bundle = std::path::Path::new(&bundle_path);
+    let plist_path = if bundle.join("Contents/Info.plist").is_file() {
+        // macOS application bundle layout.
+        bundle.join("Contents/Info.plist")
+    } else {
+        // iOS and other simple bundle layouts.
+        bundle.join("Info.plist")
+    };
+    let content = std::fs::read_to_string(plist_path)?;
+    Ok(plist::missing_schemes(&content, config))
 }
