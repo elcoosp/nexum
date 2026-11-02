@@ -1,63 +1,57 @@
-use async_channel::{unbounded, Receiver, Sender};
+//! Framework-agnostic deep linking for Rust.
+//!
+//! Nexum registers custom URL schemes (`myapp://…`) with the operating system
+//! and delivers matching events to your application. This crate contains the
+//! framework-independent building blocks:
+//!
+//! * [`Config`] — the schemes and app links your application handles,
+//!   validated against RFC 3986 rules.
+//! * [`DeepLinkHub`] — the producer side: platform code and integrations push
+//!   URLs into it.
+//! * [`DeepLinkHandle`] — the consumer side: blocking, async and [`Stream`]
+//!   (behind the `stream` feature) access to incoming [`DeepLinkEvent`]s.
+//! * [`Error`] — the single error type shared by the whole nexum stack.
+//!
+//! The platform-specific registration lives in [`nexum_platform`](https://docs.rs/nexum-platform),
+//! and thin adapters exist for Floem, Xilem, Dioxus and GPUI.
+//!
+//! # Transport semantics
+//!
+//! The hub is a *multi-producer, multi-consumer queue*: every event is
+//! delivered to **exactly one** consumer (round-robin over live receivers).
+//! Clone [`DeepLinkHandle`] when you want several workers sharing the load.
+//!
+//! # Example
+//!
+//! ```
+//! use nexum_core::{Config, DeepLinkHub, Source};
+//!
+//! let config = Config::new(["myapp"]).validate().expect("valid config");
+//! let hub = DeepLinkHub::new();
+//! let handle = hub.handle();
+//!
+//! hub.push_url("myapp://open/settings");
+//! assert_eq!(handle.try_recv().as_deref(), Some("myapp://open/settings"));
+//!
+//! // Cold-start URLs launched from the command line carry their own source:
+//! hub.push_launch_url("myapp://open/doc/42");
+//! let event = handle.recv_event_blocking().expect("event");
+//! assert_eq!(event.source, Source::CommandLine);
+//! ```
 
-pub struct Config {
-    pub schemes: Vec<String>,
-    pub app_links: Vec<AppLink>,
-}
+#![forbid(unsafe_code)]
+#![warn(missing_docs)]
 
-pub struct AppLink {
-    pub host: String,
-    pub path_prefixes: Vec<String>,
-}
+mod config;
+mod error;
+mod event;
+mod handle;
+mod hub;
 
-#[derive(Clone, Debug)]
-pub struct DeepLinkHandle {
-    rx: Receiver<String>,
-}
-
-impl DeepLinkHandle {
-    /// Creates a new handle from a channel receiver.
-    pub fn new(rx: Receiver<String>) -> Self {
-        Self { rx }
-    }
-
-    pub fn recv_blocking(&self) -> Result<String, async_channel::RecvError> {
-        self.rx.recv_blocking()
-    }
-
-    pub fn try_recv(&self) -> Option<String> {
-        self.rx.try_recv().ok()
-    }
-
-    pub async fn recv(&self) -> Option<String> {
-        self.rx.recv().await.ok()
-    }
-
-    pub fn drain_into(&self, out: &mut Vec<String>) {
-        while let Some(url) = self.try_recv() {
-            out.push(url);
-        }
-    }
-}
-#[derive(Debug)]
-pub struct DeepLinkHub {
-    tx: Sender<String>,
-    rx: Receiver<String>,
-}
-
-impl DeepLinkHub {
-    pub fn new() -> Self {
-        let (tx, rx) = unbounded();
-        Self { tx, rx }
-    }
-    pub fn sender(&self) -> Sender<String> {
-        self.tx.clone()
-    }
-    pub fn push_url(&self, url: String) {
-        let _ = self.tx.try_send(url);
-    }
-
-    pub fn handle(&self) -> DeepLinkHandle {
-        DeepLinkHandle::new(self.rx.clone())
-    }
-}
+pub use config::{AppLink, Config, ConfigBuilder};
+pub use error::{Error, Result};
+pub use event::{DeepLinkEvent, Source};
+pub use handle::DeepLinkHandle;
+#[cfg(feature = "stream")]
+pub use handle::DeepLinkStream;
+pub use hub::DeepLinkHub;
