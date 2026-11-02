@@ -1,18 +1,18 @@
 [package]
 name = "xilem-basic"
-version = "0.1.0"
-edition = "2024"
-description = "Nexum Xilem Deep Link Example"
+description = "Nexum Xilem deep-link example"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
 
 [dependencies]
 nexum-xilem = { path = "../../nexum-xilem" }
-nexum-core = { path = "../../nexum-core" }
-xilem = "0.4"
-async-channel = "2.5"
-winit = "0.30.13"
-tokio = { version = "1", features = ["rt", "time"] }
-masonry = "0.4.0"
-masonry_winit = "0.4.0"
+xilem.workspace = true
+
 [package.metadata.bundle]
 name = "Nexum Xilem Example"
 identifier = "com.nexum.xilem-basic"
