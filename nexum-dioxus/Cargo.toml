@@ -1,15 +1,28 @@
 [package]
 name = "nexum-dioxus"
-version = "0.1.0"
-edition = "2024"
-description = "Dioxus adapter for nexum deep linking"
-license = "MIT OR Apache-2.0"
+description = "Dioxus desktop adapter for nexum deep linking"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
 
 [dependencies]
-nexum-core = { path = "../nexum-core", version = "0.1.0" }
-nexum-platform = { path = "../nexum-platform" }
-dioxus = { version = "0.7", features = ["desktop"] }
-dioxus-desktop = { version = "0.7" }
-tao = "0.34"
-dioxus-hooks = "0.7"
-async-channel = "2.5"
+nexum-core = { path = "../nexum-core", version = "0.2.0" }
+nexum-platform = { path = "../nexum-platform", version = "0.2.0" }
+dioxus.workspace = true
+dioxus-desktop.workspace = true
+# Aligned with the tao required by dioxus-desktop (see workspace manifest).
+tao.workspace = true
+
+[dev-dependencies]
+futures = { version = "0.3.31", default-features = false, features = ["std", "async-await", "executor"] }
+tempfile = "3.23.0"
+
+[lints]
+workspace = true
