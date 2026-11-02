@@ -1528,7 +1528,7 @@ dependencies = [
 
 [[package]]
 name = "dioxus-basic"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "nexum-dioxus",
@@ -2332,7 +2332,7 @@ dependencies = [
 
 [[package]]
 name = "floem-basic"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "floem",
  "nexum-floem",
@@ -4483,8 +4483,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
 
 [[package]]
+name = "nexum"
+version = "0.3.0"
+dependencies = [
+ "nexum-core",
+ "nexum-macros",
+ "nexum-platform",
+]
+
+[[package]]
 name = "nexum-core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-channel",
  "futures",
@@ -4495,7 +4504,7 @@ dependencies = [
 
 [[package]]
 name = "nexum-dioxus"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "dioxus",
  "dioxus-desktop",
@@ -4508,7 +4517,7 @@ dependencies = [
 
 [[package]]
 name = "nexum-floem"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "crossbeam-channel",
  "floem",
@@ -4518,8 +4527,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "nexum-macros"
+version = "0.3.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
 name = "nexum-platform"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "dirs 7.0.0",
  "nexum-core",
@@ -4531,7 +4549,7 @@ dependencies = [
 
 [[package]]
 name = "nexum-xilem"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "futures",
  "nexum-core",
@@ -9434,7 +9452,7 @@ dependencies = [
 
 [[package]]
 name = "xilem-basic"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "nexum-xilem",
  "xilem",
