@@ -1,0 +1,29 @@
+[package]
+name = "nexum"
+description = "Framework-agnostic deep linking for Rust: one dependency, one bootstrap"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+
+[dependencies]
+nexum-core = { path = "../nexum-core", version = "0.3.0" }
+nexum-platform = { path = "../nexum-platform", version = "0.3.0" }
+nexum-macros = { path = "../nexum-macros", version = "0.3.0" }
+
+[features]
+default = []
+# Re-exports `DeepLinkStream` (see `nexum-core/stream`).
+stream = ["nexum-core/stream"]
+# Re-exports `nexum::platform::single_instance` (see
+# `nexum-platform/single-instance`).
+single-instance = ["nexum-platform/single-instance"]
+
+[lints]
+workspace = true
