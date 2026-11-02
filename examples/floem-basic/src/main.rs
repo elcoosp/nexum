@@ -1,7 +1,6 @@
 use floem::prelude::*;
 use floem::reactive::ReadSignal;
-use floem::views::{label, v_stack};
-use nexum_core::Config;
+use nexum_floem::Config;
 use nexum_floem::signal;
 
 fn app_view(url_signal: ReadSignal<Option<String>>) -> impl View {
@@ -16,12 +15,12 @@ fn app_view(url_signal: ReadSignal<Option<String>>) -> impl View {
 }
 
 fn main() {
-    let config = Config {
-        schemes: vec!["floem".to_string()],
-        app_links: vec![],
-    };
+    let config = Config::builder()
+        .scheme("floem")
+        .build()
+        .expect("valid config");
 
-    let url_signal = signal(config);
+    let url_signal = signal(&config);
 
     floem::launch(move || app_view(url_signal));
 }
