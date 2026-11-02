@@ -1,6 +1,6 @@
 # Nexum Brainstorm — Performance, Modularity, DRY, KISS & Roadmap
 
-> Status legend: ✅ implemented in this release · 🔜 planned (documented, not blocking 0.2.0)
+> Status legend: ✅ implemented · 🔜 planned (documented, not blocking the current release)
 
 ## 1. Performance
 
@@ -60,11 +60,11 @@
 | F7 | **Linux: proper desktop entries** — quoted `Exec`, `%%` escaping, optional `Icon=`, trailing-`;` MimeType list, sanitized app name, `xdg-mime` failures reported | ✅ | Registration is now verifiable and non-lossy. |
 | F8 | **`Stream` support** — `DeepLinkHandle::into_stream()` behind the `stream` feature | ✅ | Composable with any async runtime / `tokio_stream` / `futures`. |
 | F9 | **Headless-testable adapters** — relay loops extracted into pure async functions; xilem relay tested against a mock `RawProxy` | ✅ | UI-framework glue is no longer a coverage black hole. |
-| F10 | **Single-instance hand-off** (second app instance forwards its URL to the running instance over a local socket and exits) | 🔜 | Needs a small IPC crate (`interprocess`) + per-platform naming; substantial, deserves its own RFC. |
-| F11 | **macOS `Info.plist` validator** (warn when registered schemes are missing from the bundle) | 🔜 | Requires `NSBundle` plumbing; useful only inside a bundle. |
-| F12 | **`nexum-macros`** — `#[nexum::deep_link]` attribute generating config + bootstrap | 🔜 | A proc-macro crate would roughly double cold compile time for little gain today. |
-| F13 | **Android/iOS backends** (intent filters / universal links) | 🔜 | Blocked on the UI frameworks themselves. |
-| F14 | **Bounded-queue mode** (`hub_config: Bounded(usize)`) for apps that must not buffer unbounded URLs | 🔜 | Current unbounded queue matches the event rate; revisit if a use case appears. |
+| F10 | **Single-instance hand-off** (second app instance forwards its URL to the running instance over a local socket and exits) | ✅ | `nexum-platform/single_instance` behind the `single-instance` feature: FNV-derived UDS endpoint on unix, loopback TCP on Windows, tiny `NEXUM/1` line protocol with ack + handshake timeouts, stale-socket detection, no IPC dependency. |
+| F11 | **macOS `Info.plist` validator** (warn when registered schemes are missing from the bundle) | ✅ | Pure `plist::missing_schemes`/`url_types_xml` (tested everywhere) + `validate_bundle()` reading the running bundle's plist on macOS. |
+| F12 | **`nexum-macros`** — `#[nexum::deep_link]` attribute generating config + bootstrap | ✅ | Tiny `syn`-based proc-macro crate; injects validated config + `init` into `fn main`, exposing `_nexum_handle`; re-exported by the new `nexum` facade crate. |
+| F13 | **Android/iOS backends** (intent filters / universal links) | ✅ (intake + declarations) | `mobile::push_intent_url` (Android) / `mobile::push_open_urls` (iOS) feed the hub from framework glue; `android_manifest_intent_filter` and `plist::url_types_xml` generate the declarative registration. Cross-checked with `cargo check` for `aarch64-linux-android` / `aarch64-apple-ios`. |
+| F14 | **Bounded-queue mode** (`hub_config: Bounded(usize)`) for apps that must not buffer unbounded URLs | ✅ | `DeepLinkHub::bounded(capacity)`: pushes block while full, `try_push_url` returns `Error::QueueFull`; `init_with(&config, hub)` installs a bounded hub through the one-call bootstrap. |
 
 ## 6. Quality infrastructure (part of the same brainstorm)
 
