@@ -1,0 +1,63 @@
+# cargo-deny configuration for the nexum workspace.
+#
+# Checked in CI by cargo-deny-action@v2.1.1 (see .github/workflows/security.yml).
+# See https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+# cargo-deny scans the whole workspace graph.
+all-features = true
+
+[licenses]
+# The workspace is dual-licensed MIT OR Apache-2.0.
+version = 2
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Unicode-3.0",
+  "Zlib",
+  "CC0-1.0",
+  "0BSD",
+  "MPL-2.0",
+  "CDLA-Permissive-2.0",
+  "LicenseRef-OpenSSL",   # openssl-sys transitive (mac/windows keychain deps)
+]
+# Confidence threshold for license detection in LICENSE files.
+confidence-threshold = 0.93
+
+[bans]
+# Lint level for when a crate listed here is encountered.
+multiple-versions = "warn"
+# Warn about wildcard dependency requirements in published crates.
+wildcards = "deny"
+deny = [
+  # Prevent accidental double-inclusion of tightly-coupled stack duplicates.
+  { name = "winit" },                 # adapters must go through tao
+  { name = "wry" },                   # only dioxus-desktop may pull webview glue
+]
+skip = [
+  # { name = "crate", version = "x.y" } — add known transitive duplicates here.
+]
+skip-tree = []
+
+[sources]
+# Only allow dependencies from crates.io.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
+
+[advisories]
+version = 2
+# CI fails on known security vulnerabilities.
+vulnerability = "deny"
+unmaintained = "warn"
+yanked = "deny"
+notice = "warn"
+# Do not fail the build for unmaintained crates until replacements exist.
+ignore = [
+  # { id = "RUSTSEC-XXXX-XXXX", reason = "..." },
+]
