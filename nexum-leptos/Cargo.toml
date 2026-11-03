@@ -1,0 +1,33 @@
+[package]
+name = "nexum-leptos"
+description = "Leptos adapter for nexum deep linking"
+version.workspace = true
+edition.workspace = true
+rust-version = "1.88"
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+
+[dependencies]
+nexum-core = { path = "../nexum-core", version = "0.3.0" }
+nexum-platform = { path = "../nexum-platform", version = "0.3.0" }
+leptos = { workspace = true, optional = true }
+
+[features]
+default = []
+# Exposes `signal(config)` and `signal_from_handle(handle)`, bridging deep
+# links into a Leptos `RwSignal<Option<String>>`.
+signal = ["dep:leptos"]
+
+[dev-dependencies]
+any_spawner = { version = "0.3.0", features = ["tokio"] }
+futures = { version = "0.3.31", default-features = false, features = ["std", "async-await", "executor"] }
+tempfile = "3.23.0"
+tokio = { version = "1.49.0", features = ["rt"] }
+
+[lints]
+workspace = true
