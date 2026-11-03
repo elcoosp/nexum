@@ -59,7 +59,7 @@ dioxus-desktop = "0.7.10"
 # MUST stay aligned with the tao version required by dioxus-desktop (0.34):
 # the adapter pattern-matches tao's event enum, so both crates need to see
 # the identical type.
-tao = "0.34.8"
+tao = "0.35.3"
 
 [workspace.lints.rust]
 missing_docs = "warn"
