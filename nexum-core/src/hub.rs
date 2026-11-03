@@ -116,12 +116,13 @@ impl DeepLinkHub {
     ///
     /// On a [bounded](DeepLinkHub::bounded) hub this blocks the calling
     /// thread while the queue is full; on an unbounded hub it never blocks.
+    /// On `wasm` targets, where threads (and therefore blocking) do not
+    /// exist, the bounded push degrades to a non-blocking attempt that drops
+    /// the event while the queue is full.
     pub fn push_event(&self, event: DeepLinkEvent) {
         match self.capacity {
             // Bounded: wait for room instead of silently dropping the URL.
-            Some(_) => {
-                self.tx.send_blocking(event).ok();
-            }
+            Some(_) => self.push_bounded(event),
             // Unbounded: the hub itself owns a receiver, so the queue is
             // connected for as long as the hub lives; a failure can only
             // come from a raw `sender()` clone used after the hub was
@@ -130,6 +131,19 @@ impl DeepLinkHub {
                 self.tx.try_send(event).ok();
             }
         }
+    }
+
+    /// Bounded push: waits for room where blocking is possible.
+    #[cfg(not(target_family = "wasm"))]
+    fn push_bounded(&self, event: DeepLinkEvent) {
+        self.tx.send_blocking(event).ok();
+    }
+
+    /// Bounded push on the web: no threads to park, so the event is dropped
+    /// while the queue is full.
+    #[cfg(target_family = "wasm")]
+    fn push_bounded(&self, event: DeepLinkEvent) {
+        self.tx.try_send(event).ok();
     }
 
     /// Non-blocking variant of [`DeepLinkHub::push_event`].
@@ -171,6 +185,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_family = "wasm"))]
     fn push_url_delivers_system_sourced_event() {
         let hub = DeepLinkHub::new();
         let handle = hub.handle();
@@ -181,6 +196,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_family = "wasm"))]
     fn push_launch_url_delivers_command_line_sourced_event() {
         let hub = DeepLinkHub::new();
         let handle = hub.handle();
@@ -190,6 +206,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_family = "wasm"))]
     fn push_event_keeps_original_source() {
         let hub = DeepLinkHub::new();
         let handle = hub.handle();
@@ -254,6 +271,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_family = "wasm"))]
     fn try_push_reports_queue_full_on_a_bounded_hub() {
         let hub = DeepLinkHub::bounded(2);
         let handle = hub.handle();
@@ -298,6 +316,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_family = "wasm"))]
     fn blocking_push_waits_for_room_on_a_bounded_hub() {
         use std::sync::Arc;
         use std::time::Duration;
