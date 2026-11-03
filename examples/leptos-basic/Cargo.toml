@@ -1,0 +1,28 @@
+[package]
+name = "leptos-basic"
+description = "Nexum Leptos deep-link example"
+version.workspace = true
+edition.workspace = true
+rust-version = "1.88"
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish = false
+
+[dependencies]
+nexum-leptos = { path = "../../nexum-leptos", features = ["signal"] }
+leptos = { workspace = true, features = ["csr"] }
+
+[package.metadata.bundle]
+name = "Nexum Leptos Example"
+identifier = "com.nexum.leptos-basic"
+icon = ["icon.png"]
+version = "0.1.0"
+copyright = "MIT"
+category = "public.app-category.developer-tools"
+short_description = "Nexum Leptos Deep Link Example"
+long_description = "Example application for Nexum deep linking in Leptos."
+osx_url_schemes = ["nexumdemo"]
