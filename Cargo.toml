@@ -8,9 +8,11 @@ members = [
     "nexum-floem",
     "nexum-xilem",
     "nexum-dioxus",
+    "nexum-leptos",
     "examples/floem-basic",
     "examples/xilem-basic",
     "examples/dioxus-basic",
+    "examples/leptos-basic",
 ]
 # `nexum-gpui` is intentionally not a workspace member: it tracks Zed's `main`
 # branch through a git dependency, which is far too heavy for routine CI.
@@ -45,6 +47,11 @@ objc2-foundation = { version = "0.3.2", features = [
 ] }
 # Framework adapters
 floem = "0.2.0"
+# Release candidate: the adapter tracks the 0.9 line until it stabilizes.
+# The adapter itself only needs the reactive core (signals + spawn_local),
+# so default features stay off; the CSR example opts into `features =
+# ["csr"]`.
+leptos = { version = "0.9.0-rc1", default-features = false }
 crossbeam-channel = "0.5.17"
 xilem = "0.4.0"
 dioxus = { version = "0.7.10", features = ["desktop"] }
