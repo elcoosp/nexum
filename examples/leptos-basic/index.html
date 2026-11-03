@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nexum × Leptos — deep-link demo</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0d1117;
+        --card: #161d27;
+        --card-edge: #232d3b;
+        --text: #e6edf3;
+        --muted: #8b98a5;
+        --accent: #ff5f2e;
+        --accent-soft: rgba(255, 95, 46, 0.14);
+        --ok: #3fb950;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          "Segoe UI", system-ui, -apple-system, "Noto Sans", sans-serif;
+        background:
+          radial-gradient(
+            60rem 30rem at 85% -10%,
+            rgba(255, 95, 46, 0.16),
+            transparent 60%
+          ),
+          radial-gradient(
+            50rem 26rem at -10% 20%,
+            rgba(88, 166, 255, 0.12),
+            transparent 55%
+          ),
+          var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+      }
+
+      .shell {
+        width: min(46rem, 100%);
+        padding: 2.5rem 1.25rem 3rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.1rem;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 0.6rem;
+      }
+
+      h1 {
+        font-size: 2.1rem;
+        margin: 0;
+        letter-spacing: -0.02em;
+      }
+
+      .times {
+        color: var(--accent);
+      }
+
+      .subtitle {
+        margin: 0.35rem 0 0;
+        color: var(--muted);
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--card-edge);
+        border-radius: 0.8rem;
+        padding: 1.15rem 1.3rem;
+      }
+
+      .card.highlight {
+        border-color: rgba(255, 95, 46, 0.45);
+        background:
+          linear-gradient(var(--card), var(--card)) padding-box,
+          linear-gradient(120deg, rgba(255, 95, 46, 0.55), rgba(88, 166, 255, 0.4))
+            border-box;
+        border: 1px solid transparent;
+      }
+
+      h2 {
+        margin: 0 0 0.7rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        color: var(--muted);
+      }
+
+      .url {
+        margin: 0;
+        font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", monospace;
+        font-size: 1.08rem;
+        color: var(--ok);
+        word-break: break-all;
+        background: var(--accent-soft);
+        border-radius: 0.5rem;
+        padding: 0.75rem 0.9rem;
+      }
+
+      .url.empty {
+        color: var(--muted);
+        background: rgba(139, 152, 165, 0.08);
+      }
+
+      .count {
+        margin: 0.7rem 0 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .row {
+        display: flex;
+        gap: 0.6rem;
+        margin-bottom: 0.65rem;
+      }
+
+      .row.presets {
+        flex-wrap: wrap;
+        margin-bottom: 0;
+      }
+
+      input {
+        flex: 1;
+        background: #0b0f14;
+        color: var(--text);
+        border: 1px solid var(--card-edge);
+        border-radius: 0.5rem;
+        padding: 0.6rem 0.75rem;
+        font-family: ui-monospace, monospace;
+        font-size: 0.95rem;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      button {
+        background: #1c2531;
+        color: var(--text);
+        border: 1px solid var(--card-edge);
+        border-radius: 0.5rem;
+        padding: 0.55rem 0.95rem;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition:
+          border-color 0.15s ease,
+          background 0.15s ease;
+      }
+
+      button:hover {
+        border-color: var(--accent);
+      }
+
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #16100d;
+        font-weight: 600;
+      }
+
+      button.primary:hover {
+        background: #ff7350;
+      }
+
+      .hint {
+        margin: 0.8rem 0 0;
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+
+      code {
+        font-family: ui-monospace, monospace;
+        background: rgba(139, 152, 165, 0.12);
+        border-radius: 0.3rem;
+        padding: 0.08rem 0.32rem;
+      }
+
+      .log {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+
+      .log li {
+        background: #0b0f14;
+        border: 1px solid var(--card-edge);
+        border-radius: 0.45rem;
+        padding: 0.5rem 0.7rem;
+      }
+
+      .log li code {
+        background: none;
+        padding: 0;
+        color: var(--ok);
+      }
+
+      footer {
+        margin-top: 0.4rem;
+        color: var(--muted);
+        font-size: 0.8rem;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body></body>
+</html>
