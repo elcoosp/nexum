@@ -9,7 +9,7 @@
     <img src="https://img.shields.io/badge/version-0.3.0-000000?style=flat-square" alt="Version"/>
     <img src="https://img.shields.io/badge/License-MIT%20%2F%20Apache--2.0-blue?style=flat-square" alt="License"/>
     <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-262D3A?style=flat-square" alt="Platforms"/>
-    <img src="https://img.shields.io/badge/Ecosystem-GPUI%20%7C%20Floem%20%7C%20Xilem%20%7C%20Dioxus-6A0DAD?style=flat-square" alt="Ecosystem"/>
+    <img src="https://img.shields.io/badge/Ecosystem-GPUI%20%7C%20Floem%20%7C%20Xilem%20%7C%20Dioxus%20%7C%20Leptos-6A0DAD?style=flat-square" alt="Ecosystem"/>
   </p>
 </div>
 
@@ -30,6 +30,7 @@ Nexum is organized as a modular workspace to keep dependencies minimal and integ
 | [`nexum-floem`](nexum-floem/) | Floem | `setup` + `signal` → `ReadSignal<Option<String>>` (via `signal` feature) |
 | [`nexum-xilem`](nexum-xilem/) | Xilem | `setup` + `with_deep_links` view wrapper (`task_raw` + `MessageProxy`) |
 | [`nexum-dioxus`](nexum-dioxus/) | Dioxus | `launch_desktop` one-call path + `use_deep_link` signal |
+| [`nexum-leptos`](nexum-leptos/) | Leptos | `setup` + `signal`/`signal_from_handle` → `RwSignal<Option<String>>` (via `signal` feature) |
 | [`nexum-gpui`](nexum-gpui/) | GPUI | `setup_deep_links` + `attach_deep_link` (Zed git registry, outside the workspace) |
 
 ## Platform Support
@@ -120,7 +121,11 @@ cargo build -p nexum-gpui    # requires the Zed git registry (outside the worksp
 cargo build -p nexum-floem   # requires floem
 cargo build -p nexum-xilem   # requires xilem
 cargo build -p nexum-dioxus  # requires dioxus
+cargo build -p nexum-leptos  # requires leptos
 ```
+
+`nexum-leptos` and the `leptos-basic` example also type-check for the browser
+(`--target wasm32-unknown-unknown`), which is where Leptos applications run.
 
 ## Examples
 
@@ -132,10 +137,11 @@ Explore ready-to-run implementations for each supported framework in the `exampl
 | `floem-basic` | Floem | `examples/floem-basic/` |
 | `xilem-basic` | Xilem | `examples/xilem-basic/` |
 | `dioxus-basic` | Dioxus | `examples/dioxus-basic/` |
+| `leptos-basic` | Leptos | `examples/leptos-basic/` (wasm32, served with [Trunk](https://trunkrs.dev)) |
 
 ## Quality & CI
 
-- **Tests:** the workspace keeps 100 % line coverage on `nexum-core`, `nexum-platform` and `nexum-floem` (enforced with `cargo-llvm-cov --fail-under-lines 100`, see [`docs/COVERAGE.md`](docs/COVERAGE.md)).
+- **Tests:** the workspace keeps 100 % line coverage on `nexum-core`, `nexum-platform`, `nexum-floem` and `nexum-leptos` (enforced with `cargo-llvm-cov --fail-under-lines 100`, see [`docs/COVERAGE.md`](docs/COVERAGE.md)).
 - **Linting:** `clippy --pedantic` with `unsafe_code = "forbid"` (core) and `missing_docs` — zero warnings, zero allows.
 - **Cross-target checks:** the macOS / Windows / Android / iOS backends are type-checked on their real targets in CI, so cfg-gated code cannot rot.
 - **CI/CD:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (fmt, clippy, 3-OS test matrix, MSRV, cross-target, docs, coverage), [`release.yml`](.github/workflows/release.yml) (git-cliff changelog + crates.io publishing), [`security.yml`](.github/workflows/security.yml) (cargo-deny + typos), Dependabot for weekly updates.
