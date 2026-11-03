@@ -87,7 +87,8 @@ jobs:
       - name: Generate coverage and enforce the 100% gate
         run: |
           cargo llvm-cov --package nexum-core --package nexum-platform \
-            --package nexum-floem --fail-under-lines 100 --lcov --output-path lcov-gate.info
+            --package nexum-floem --package nexum-leptos \
+            --all-features --fail-under-lines 100 --lcov --output-path lcov-gate.info
       - name: Full workspace coverage report
         run: cargo llvm-cov --workspace --all-features --lcov --output-path lcov.info
       - uses: codecov/codecov-action@v7.1.1
@@ -132,6 +133,23 @@ jobs:
         with:
           key: cross-${{ matrix.target }}
       - run: cargo check -p nexum-core -p nexum-platform --all-features --target ${{ matrix.target }}
+
+  wasm:
+    name: Browser targets (wasm32)
+    # nexum-core keeps its async transport usable on wasm so the Leptos
+    # adapter and the leptos-basic example compile for the browser; the
+    # blocking-only primitives are cfg-gated away there. Type-check the
+    # whole path so the gating cannot rot.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2.9.3
+        with:
+          key: wasm
+      - run: cargo check -p nexum-core -p nexum-leptos -p leptos-basic --all-features --target wasm32-unknown-unknown
 
   docs:
     name: Documentation
