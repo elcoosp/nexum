@@ -1,12 +1,13 @@
 # Coverage strategy
 
 `nexum` enforces **100 % line coverage** for the logic crates in CI
-(`nexum-core`, `nexum-platform`, `nexum-floem` — see the `coverage` job in
-`.github/workflows/ci.yml`):
+(`nexum-core`, `nexum-platform`, `nexum-floem`, `nexum-leptos` — see the
+`coverage` job in `.github/workflows/ci.yml`):
 
 ```bash
 cargo llvm-cov --package nexum-core --package nexum-platform \
-  --package nexum-floem --all-features --fail-under-lines 100
+  --package nexum-floem --package nexum-leptos \
+  --all-features --fail-under-lines 100
 ```
 
 The full workspace additionally publishes an unrestricted coverage report to
@@ -22,6 +23,7 @@ windowing event loop:
 | `nexum-core`    | 100 % enforced | Pure primitives — config, hub (incl. bounded mode), handles, events. |
 | `nexum-platform`| 100 % enforced | OS registration, single-instance hand-off, plist validator and mobile generators, all isolated behind explicit inputs and a fake `xdg-mime`. |
 | `nexum-floem`   | 100 % enforced | Thin adapter; the signal bridge is factored into a testable `relay_urls` function. |
+| `nexum-leptos`  | 100 % enforced | Thin adapter; the `spawn_local` bridge is factored into a testable `relay_to_signal` future driven inside a tokio `LocalSet`. |
 | `nexum-xilem`   | report-only    | `task_raw` + `fork` glue only runs inside a live Xilem runtime. |
 | `nexum-dioxus`  | report-only    | `with_custom_event_handler` is invoked by the tao event loop inside `launch_desktop`. |
 | `nexum-gpui`    | report-only    | Not part of the workspace build (GPUI requires the Zed git registry); callback glue is event-loop bound. |
@@ -63,14 +65,27 @@ extracted into plain functions and covered — see the next section.
 
 5. **Testable relays instead of closures in threads.** Each adapter keeps
    its runtime glue (channels, proxies, event handlers) in a function that
-   takes the incoming URLs and pushes them into the hub
+   takes the incoming URLs and pushes them into the reactive runtime
    (`relay_cold_start_urls` in `nexum-platform`,
    `relay_urls` in `nexum-floem` / `nexum-xilem`,
-   `relay_to_callback` in `nexum-dioxus`). The thread/event-loop wrapper
+   `relay_to_callback` in `nexum-dioxus`,
+   `relay_to_signal` in `nexum-leptos`). The thread/event-loop wrapper
    that calls the relay is the only uncovered line — and it is a one-line
-   delegation.
+   delegation. In `nexum-leptos` even that wrapper is covered: the test
+   initializes `any_spawner` with the tokio executor and drives
+   `spawn_local` inside a `LocalSet`, so the bridge really forwards URLs
+   headlessly.
 
-6. **Platform code is cross-checked even where it cannot run.** The
+6. **wasm32 compatibility is type-checked, not covered.** `nexum-core`
+   keeps its async (executor-agnostic) transport usable on `wasm` — only
+   the genuinely blocking primitives (`recv_blocking`, bounded
+   `push_event`) are `cfg`-gated to native targets, and the `wasm`
+   fallbacks are type-checked with `cargo check --target
+   wasm32-unknown-unknown` in CI. Those few `cfg`-gated lines are compiled
+   per-target, so each target only reports the lines it actually builds;
+   the native 100 % gate stays honest.
+
+7. **Platform code is cross-checked even where it cannot run.** The
    `cfg`-gated backends are type-checked on every relevant target from the
    Linux CI host — `cargo check --target x86_64-apple-darwin` (macOS
    NSBundle validator), `--target x86_64-pc-windows-gnu` (registry
@@ -78,7 +93,7 @@ extracted into plain functions and covered — see the next section.
    `--target aarch64-apple-ios` (mobile intake) — so typos cannot hide
    behind `#[cfg]`.
 
-7. **Doctests count.** `cargo llvm-cov` runs doctests too; every public API
+8. **Doctests count.** `cargo llvm-cov` runs doctests too; every public API
    example in the docs is therefore executed (or `no_run`-compiled) in the
    coverage build.
 
@@ -90,7 +105,8 @@ rustup component add llvm-tools-preview
 
 # Gate (must exit 0):
 cargo llvm-cov --package nexum-core --package nexum-platform \
-  --package nexum-floem --all-features --fail-under-lines 100 --summary-only
+  --package nexum-floem --package nexum-leptos \
+  --all-features --fail-under-lines 100 --summary-only
 
 # Per-file detail, including the exact missing lines:
 cargo llvm-cov --package nexum-core --all-features --lcov --output-path lcov.info
