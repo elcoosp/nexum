@@ -1,6 +1,10 @@
 use async_channel::Receiver;
 
-use crate::error::{Error, Result};
+// `Error` is only referenced by the blocking receivers, which exist on
+// native targets; the async transport itself never constructs it.
+#[cfg(not(target_family = "wasm"))]
+use crate::error::Error;
+use crate::error::Result;
 use crate::event::DeepLinkEvent;
 
 /// The consumer side of the deep-link transport.
@@ -49,18 +53,26 @@ impl DeepLinkHandle {
 
     /// Blocking variant of [`DeepLinkHandle::recv`].
     ///
+    /// Only available on native targets: the browser (`wasm`) has no
+    /// blocking primitives, so consumption there goes through
+    /// [`DeepLinkHandle::recv`].
+    ///
     /// # Errors
     ///
     /// Returns [`Error::HubClosed`] when the channel has been shut down.
+    #[cfg(not(target_family = "wasm"))]
     pub fn recv_blocking(&self) -> Result<String> {
         self.recv_event_blocking().map(|event| event.url)
     }
 
     /// Blocking variant of [`DeepLinkHandle::recv_event`].
     ///
+    /// Only available on native targets, like [`DeepLinkHandle::recv_blocking`].
+    ///
     /// # Errors
     ///
     /// Returns [`Error::HubClosed`] when the channel has been shut down.
+    #[cfg(not(target_family = "wasm"))]
     pub fn recv_event_blocking(&self) -> Result<DeepLinkEvent> {
         self.rx.recv_blocking().map_err(|_| Error::HubClosed)
     }
@@ -144,6 +156,8 @@ impl futures_core::Stream for DeepLinkStream {
 mod tests {
     use futures::executor::block_on;
 
+    // Only the native-gated tests touch the error types directly.
+    #[cfg(not(target_family = "wasm"))]
     use crate::error::{Error, Result};
     use crate::event::{DeepLinkEvent, Source};
     use crate::hub::DeepLinkHub;
@@ -158,6 +172,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_family = "wasm"))]
     fn recv_event_blocking_delivers_events() -> Result<()> {
         let hub = DeepLinkHub::new();
         let handle = hub.handle();
@@ -172,6 +187,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_family = "wasm"))]
     fn recv_blocking_reports_closed_channel() {
         let hub = DeepLinkHub::new();
         let handle = hub.handle();
@@ -198,7 +214,7 @@ mod tests {
         let error = block_on(handle.recv_url())
             .expect("item")
             .expect_err("malformed");
-        assert!(matches!(error, Error::MalformedUrl(raw, _) if raw == "not a url"));
+        assert!(matches!(error, crate::error::Error::MalformedUrl(raw, _) if raw == "not a url"));
         hub.push_url("myapp://ok");
         let url = block_on(handle.recv_url()).expect("item").expect("parsed");
         assert_eq!(url.scheme(), "myapp");
