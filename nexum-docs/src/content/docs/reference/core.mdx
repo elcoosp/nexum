@@ -1,0 +1,123 @@
+---
+title: nexum-core Reference
+description: Config, ConfigBuilder, AppLink, DeepLinkHub, DeepLinkHandle, DeepLinkEvent, Source and DeepLinkStream — the framework-independent primitives.
+type: reference
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+`nexum-core` holds everything that does not touch the operating system: configuration, the producer-consumer event channel, and the event type. All items are re-exported flat from the crate root, and the crate compiles with `#![forbid(unsafe_code)]`. The transport is `async-channel`, so every async API works on any executor — and on wasm.
+
+## Config
+
+Describes what your application owns and how it presents itself to the OS.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `schemes` | `Vec<String>` | `[]` | URL schemes the app handles, e.g. `myapp` |
+| `app_links` | `Vec<AppLink>` | `[]` | App links (universal links) the app claims |
+| `icon_path` | `Option<PathBuf>` | `None` | Icon for the OS protocol handler (Windows `DefaultIcon`, Linux `Icon=`) |
+
+| Method | Signature | Description |
+| --- | --- | --- |
+| `new` | `fn new(schemes: impl IntoIterator<Item: Into<String>>) -> Self` | Struct-literal-friendly constructor from schemes |
+| `builder` | `fn builder() -> ConfigBuilder` | Returns a fresh builder |
+| `with_app_links` | `fn with_app_links(self, links: impl IntoIterator<Item = AppLink>) -> Self` | **Replaces** the app-link list |
+| `with_app_link` | `fn with_app_link(self, link: AppLink) -> Self` | Appends one app link |
+| `with_icon_path` | `fn with_icon_path(self, path: impl Into<PathBuf>) -> Self` | Sets the icon path |
+| `validate` | `fn validate(&self) -> Result<()>` | Checks schemes against the RFC 3986 grammar and app-link hosts |
+| `validate_scheme` | `fn validate_scheme(scheme: &str) -> Result<()>` | Associated function: first char ASCII alphabetic, then alphanumerics or `+ - .` |
+| `extract_launch_urls` | `fn extract_launch_urls<I>(&self, args: I) -> Vec<String>` | Keeps every argument that parses as an absolute URL with a configured scheme (case-insensitive); preserves order; accepts scheme-only URLs like `myapp:` |
+
+## ConfigBuilder
+
+| Method | Signature | Description |
+| --- | --- | --- |
+| `scheme` | `fn scheme(self, scheme: impl Into<String>) -> Self` | Appends one scheme |
+| `schemes` | `fn schemes(self, schemes: impl IntoIterator<Item: Into<String>>) -> Self` | Appends several |
+| `app_link` | `fn app_link(self, link: AppLink) -> Self` | Appends one app link |
+| `app_links` | `fn app_links(self, links: impl IntoIterator<Item = AppLink>) -> Self` | Appends several |
+| `icon_path` | `fn icon_path(self, path: impl Into<PathBuf>) -> Self` | Sets the icon path |
+| `build` | `fn build(self) -> Result<Config>` | Builds and runs `validate`; an empty builder fails with `Error::NoSchemes` |
+
+## AppLink
+
+| Field / method | Type or signature | Description |
+| --- | --- | --- |
+| `host` | `String` | The host this app claims, e.g. `example.com` |
+| `path_prefixes` | `Vec<String>` | Each starts with `/`; an empty list claims the whole host |
+| `new` | `fn new(host: impl Into<String>, path_prefixes: impl IntoIterator<Item: Into<String>>) -> Self` | Constructor |
+
+## DeepLinkHub — the producer
+
+The hub owns the event queue. It is a multi-producer, **multi-consumer** channel: each event goes to exactly one consumer, chosen round-robin among live receivers. Clone handles for load-sharing; there is no broadcast.
+
+| Method | Signature | Description |
+| --- | --- | --- |
+| `new` | `fn new() -> Self` | Unbounded queue (also `Default`) |
+| `bounded` | `fn bounded(capacity: usize) -> Self` | Capacity clamped to at least 1; see the [bounded guide](/guides/bounded-hub/) |
+| `capacity` | `fn capacity(&self) -> Option<usize>` | `None` means unbounded |
+| `sender` | `fn sender(&self) -> async_channel::Sender<DeepLinkEvent>` | Escape hatch for custom framework bridges |
+| `push_url` | `fn push_url(&self, url: impl Into<String>)` | Pushes with `Source::System`; blocks when a bounded queue is full; silently drops after shutdown |
+| `push_launch_url` | `fn push_launch_url(&self, url: impl Into<String>)` | Pushes with `Source::CommandLine` |
+| `try_push_url` | `fn try_push_url(&self, url: impl Into<String>) -> Result<(), Error>` | Non-blocking; `QueueFull` or `HubClosed` |
+| `try_push_launch_url` | `fn try_push_launch_url(&self, url: impl Into<String>) -> Result<(), Error>` | Same, with `Source::CommandLine` |
+| `push_event` | `fn push_event(&self, event: DeepLinkEvent)` | Pushes a pre-built event, keeping its source |
+| `try_push_event` | `fn try_push_event(&self, event: DeepLinkEvent) -> Result<(), Error>` | Non-blocking variant |
+| `handle` | `fn handle(&self) -> DeepLinkHandle` | Creates an additional consumer |
+
+```rust
+use nexum_core::{Config, DeepLinkHub, Source};
+
+let config = Config::new(["myapp"]).validate().expect("valid config");
+let hub = DeepLinkHub::new();
+let handle = hub.handle();
+
+hub.push_url("myapp://open/settings");
+assert_eq!(handle.try_recv().as_deref(), Some("myapp://open/settings"));
+
+hub.push_launch_url("myapp://open/doc/42");
+let event = handle.recv_event_blocking().expect("event");
+assert_eq!(event.source, Source::CommandLine);
+```
+
+## DeepLinkHandle — the consumer
+
+`DeepLinkHandle` is `Clone`; each clone is an independent consumer in the round-robin. Blocking methods are unavailable on wasm targets.
+
+| Method | Signature | Notes |
+| --- | --- | --- |
+| `new` | `fn new(rx: Receiver<DeepLinkEvent>) -> Self` | Adopts any raw `async_channel` receiver |
+| `recv` | `async fn recv(&self) -> Option<String>` | `None` after shutdown |
+| `recv_event` | `async fn recv_event(&self) -> Option<DeepLinkEvent>` | Async variant with source |
+| `recv_url` | `async fn recv_url(&self) -> Option<Result<url::Url>>` | Malformed URL arrives as `Some(Err(_))` |
+| `recv_blocking` | `fn recv_blocking(&self) -> Result<String>` | Native only; `Error::HubClosed` on shutdown |
+| `recv_event_blocking` | `fn recv_event_blocking(&self) -> Result<DeepLinkEvent>` | Native only |
+| `try_recv` | `fn try_recv(&self) -> Option<String>` | `None` when empty *or* closed (indistinguishable) |
+| `try_recv_event` | `fn try_recv_event(&self) -> Option<DeepLinkEvent>` | Same semantics |
+| `drain` | `fn drain(&self) -> Vec<String>` | All currently queued URLs, in order |
+| `drain_events` | `fn drain_events(&self) -> Vec<DeepLinkEvent>` | Same for full events |
+| `into_stream` | `fn into_stream(self) -> DeepLinkStream` | Requires the `stream` feature |
+
+## DeepLinkEvent and Source
+
+| Field / method | Type or signature | Description |
+| --- | --- | --- |
+| `url` | `String` | The raw URL string as received |
+| `source` | `Source` | Where the event came from |
+| `new` | `fn new(url: impl Into<String>, source: Source) -> Self` | Constructor |
+| `parse_url` | `fn parse_url(&self) -> Result<url::Url>` | Lazy parse; `Error::MalformedUrl` on failure |
+
+| `Source` variant | Meaning |
+| --- | --- |
+| `System` *(default)* | Delivered by the OS while already running — registry hand-off (Windows), Apple event (macOS), forwarded hand-off, mobile intake |
+| `CommandLine` | Found on this process's command line — cold start on Windows and Linux, macOS `GURL` events (see [event sources](/explanation/event-sources/)) |
+
+## DeepLinkStream
+
+With the `stream` feature, `into_stream` converts a handle into `DeepLinkStream`, which implements `futures_core::Stream` with `Item = String`. The stream terminates when the channel shuts down.
+
+## Next steps
+
+- <LinkCard title="Error reference" href="/reference/errors/" description="Every Error variant and when it surfaces." />
+- <LinkCard title="Platform reference" href="/reference/platform/" description="OS registration and the global hub." />
