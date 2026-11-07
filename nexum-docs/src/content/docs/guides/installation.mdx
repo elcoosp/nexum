@@ -1,0 +1,77 @@
+---
+title: Install Nexum
+description: Pick the right crate combination for your application — facade, core plus platform, or a framework adapter — and declare the matching feature flags.
+type: how-to
+---
+
+import { LinkCard, TabItem, Tabs } from '@astrojs/starlight/components';
+
+Every nexum crate publishes from the same workspace at the same version, so you install one of three shapes: the **facade** for the one-dependency experience, **core plus platform** when you want explicit control without the macro, or a **framework adapter** to receive events through your UI framework's own reactive types.
+
+<Tabs>
+    <TabItem label="Facade (recommended)">
+        ```toml
+        [dependencies]
+        nexum = "0.3"
+        ```
+
+        The facade re-exports `Config`, `DeepLinkHub`, `DeepLinkHandle`, the `#[deep_link]` attribute and the whole `platform` module. Use it for desktop apps that want the shortest path from dependency to working deep links.
+    </TabItem>
+    <TabItem label="Core + platform">
+        ```toml
+        [dependencies]
+        nexum-core = "0.3"
+        nexum-platform = "0.3"
+        ```
+
+        Use this shape when you do not want an attribute macro in your build, or when you wire registration yourself — for example inside an existing bootstrap function with custom error handling around `nexum_platform::init`.
+    </TabItem>
+    <TabItem label="Framework adapter">
+        ```toml
+        [dependencies]
+        # Floem — the `signal` feature pulls in floem itself
+        nexum-floem = { version = "0.3", features = ["signal"] }
+
+        # Xilem
+        nexum-xilem = "0.3"
+
+        # Dioxus (desktop)
+        nexum-dioxus = "0.3"
+
+        # Leptos — the `signal` feature pulls in leptos' reactive core
+        nexum-leptos = { version = "0.3", features = ["signal"] }
+        ```
+
+        `nexum-gpui` is not published to crates.io because it tracks Zed's `main` branch through a git dependency. Depend on it directly from the repository:
+
+        ```toml
+        [dependencies]
+        nexum-gpui = { git = "https://github.com/elcoosp/nexum" }
+        ```
+    </TabItem>
+</Tabs>
+
+## Feature flags
+
+| Crate | Feature | Enables |
+| --- | --- | --- |
+| `nexum` | `stream` | `DeepLinkStream` (re-exported from core): consume URLs as a `Stream` |
+| `nexum` | `single-instance` | Second-instance hand-off via `nexum::platform::single_instance` |
+| `nexum-core` | `stream` | `DeepLinkHandle::into_stream()` and the `DeepLinkStream` type |
+| `nexum-platform` | `single-instance` | The `single_instance` module (Unix sockets / Windows loopback) |
+| `nexum-floem` | `signal` | `signal()` → Floem `ReadSignal<Option<String>>` (pulls in `floem`) |
+| `nexum-leptos` | `signal` | `signal()` and `signal_from_handle()` → `RwSignal<Option<String>>` (pulls in leptos' reactive core) |
+
+None of these features is on by default — every crate ships with `default = []`, so dependencies stay minimal unless you opt in.
+
+## Requirements
+
+- **Rust 1.85 or newer** — the workspace uses edition 2024 and declares `rust-version = "1.85"`. CI type-checks the core crates on exactly 1.85.
+- **Rust 1.88 or newer for `nexum-leptos`** — the adapter raises its own MSRV to match the leptos 0.9 line, and it type-checks for the `wasm32-unknown-unknown` target.
+- **Linux** — the `xdg-mime` tool must be installed at runtime; registration invokes it once per scheme.
+- **macOS** — registration must run on the main thread; packaged apps declare schemes in `Info.plist` (see the [macOS setup guide](/guides/macos-setup/)).
+
+## Next steps
+
+- <LinkCard title="Build your first deep link" href="/tutorials/getting-started/" description="A full walkthrough from an empty Cargo project to a received URL." />
+- <LinkCard title="Choosing an adapter" href="/guides/choosing-an-adapter/" description="Side-by-side comparison of the five framework integrations." />
