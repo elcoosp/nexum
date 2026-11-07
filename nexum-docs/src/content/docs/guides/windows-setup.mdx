@@ -1,0 +1,51 @@
+---
+title: Set Up Deep Links on Windows
+description: Understand the per-user registry keys nexum writes for your URL schemes and how command-line cold starts deliver URLs.
+type: how-to
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+On Windows, nexum registers each configured scheme under the **current user's** registry hive — no administrator rights are required. Registration happens inside `nexum::platform::register` (called by `init` or by the `#[deep_link]` bootstrap) using the path of the currently running executable.
+
+## What gets written
+
+For every scheme in your `Config`, nexum writes three registry values below `HKEY_CURRENT_USER\Software\Classes`:
+
+| Registry key | Value | Content |
+| --- | --- | --- |
+| `Software\Classes\myapp` | *(default)* | `URL:myapp Protocol` |
+| `Software\Classes\myapp` | `URL Protocol` | empty string — the marker that turns the key into a protocol handler |
+| `Software\Classes\myapp\DefaultIcon` | *(default)* | `{icon_path},0`, falling back to `{exe_path},0` |
+| `Software\Classes\myapp\shell\open\command` | *(default)* | `"{exe_path}" "%1"` |
+
+The executable path comes from `std::env::current_exe()` at registration time, and the icon comes from `Config::icon_path` when you set one:
+
+```rust
+let config = Config::builder()
+    .scheme("myapp")
+    .icon_path("C:/apps/icons/myapp.ico")
+    .build()
+    .expect("valid config");
+```
+
+Because the `shell\open\command` template passes `"%1"` as an argument, the OS launches your executable with the URL as a command-line parameter for every deep link — both cold starts and warm invocations.
+
+## How URLs reach your app
+
+`register` finishes by relaying the current process's arguments: `relay_cold_start_urls` runs `Config::extract_launch_urls` over `std::env::args().skip(1)`, keeps every argument that parses as an absolute URL with one of your configured schemes (case-insensitive), and pushes each one into the hub with `push_launch_url`.
+
+The result is a uniform flow:
+
+1. The user opens `myapp://open/settings`.
+2. The OS resolves the protocol handler and starts (or re-starts) your executable with the URL in its arguments.
+3. The new instance registers the scheme idempotently, extracts the URL from `argv`, and delivers a `DeepLinkEvent` with `url = "myapp://open/settings"` and `source = Source::CommandLine`.
+4. Without the single-instance feature, the second process consumes the URL itself; with it, the URL is forwarded to the original instance over loopback TCP and the second process exits.
+
+> [!TIP]
+> Scheme-only URLs such as `myapp:` are valid and are extracted too — `extract_launch_urls` accepts them by design.
+
+## Next steps
+
+- <LinkCard title="Single-instance hand-off" href="/guides/single-instance/" description="Route deep links from second instances into the first." />
+- <LinkCard title="Platform API reference" href="/reference/platform/" description="init, register and the global hub functions." />
