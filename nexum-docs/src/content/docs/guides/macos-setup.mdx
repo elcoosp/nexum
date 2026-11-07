@@ -1,0 +1,65 @@
+---
+title: Set Up Deep Links on macOS
+description: Declare your URL schemes in Info.plist, validate the bundle at runtime, and understand how nexum receives GURL Apple Events.
+type: how-to
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+On macOS, nexum performs two distinct jobs: at **runtime** it installs an Apple-event handler that receives `GURL` events for URLs the OS dispatches to your *running* app, and at **packaging** time you must declare the schemes in the app bundle's `Info.plist`. The library never edits your plist for you — instead it generates the XML you need and verifies that the built bundle matches your `Config`.
+
+## Declare the schemes in Info.plist
+
+Add a `CFBundleURLTypes` entry listing every scheme from your `Config`. Generate the exact XML nexum expects with `url_types_xml`, which renders the full `<key>CFBundleURLTypes</key><array>…</array>` block:
+
+```rust
+use nexum_core::Config;
+use nexum_platform::plist;
+
+let config = Config::builder().scheme("myapp").build().expect("valid config");
+println!("{}", plist::url_types_xml(&config));
+```
+
+If you package with `cargo-bundle`, the `[package.metadata.bundle]` `osx_url_schemes` key produces the same declaration:
+
+```toml
+[package.metadata.bundle]
+identifier = "com.example.myapp"
+osx_url_schemes = ["myapp"]
+```
+
+The example apps in the nexum repository use exactly this mechanism.
+
+## Validate the built bundle
+
+`validate_bundle` (re-exported from `nexum_platform` on macOS targets) reads the running bundle's `Contents/Info.plist` — or `Info.plist` directly for iOS-style layouts — and returns every configured scheme that the plist does **not** declare:
+
+```rust
+let missing = nexum_platform::validate_bundle(&config).expect("readable plist");
+if !missing.is_empty() {
+    eprintln!("schemes missing from Info.plist: {missing:?}");
+}
+```
+
+For a text-level check without touching the bundle, `plist::missing_schemes` compares any plist XML against a `Config` case-insensitively (Apple lower-cases scheme strings) and tolerates arbitrary formatting:
+
+```rust
+let missing = nexum_platform::plist::missing_schemes(&plist_xml, &config);
+```
+
+A broken or empty plist reports *all* schemes as missing — the function never panics.
+
+> [!CAUTION]
+> Run `register` on the main thread. On macOS it installs the Apple-event delegate through `NSAppleEventManager`, and calling it off the main thread returns `Error::Platform("deep links must be registered on the main thread")`. The `#[deep_link]` bootstrap runs at the top of `main`, which satisfies this on every platform.
+
+## How runtime delivery works
+
+When the user opens `myapp://open/settings` while your app runs, the OS sends a `GURL` Apple event to the process. Nexum's delegate extracts the `keyDirectObject` descriptor and pushes the URL string into the hub. Two behaviors are worth knowing precisely:
+
+1. **Delivery source** — GURL events are pushed via `push_launch_url`, so the resulting `DeepLinkEvent` carries `Source::CommandLine` rather than `Source::System`. Treat the two sources as *cold start* versus *warm runtime* semantics carefully on macOS; see [Event sources explained](/explanation/event-sources/).
+2. **Cold start** — when the OS launches your app for a URL, the URL does not arrive on the command line as it does on Windows and Linux; it arrives as a `GURL` event right after startup, once the delegate is installed.
+
+## Next steps
+
+- <LinkCard title="Platform API reference" href="/reference/platform/" description="init, register, validate_bundle and the plist module signatures." />
+- <LinkCard title="Event sources explained" href="/explanation/event-sources/" description="System versus CommandLine delivery semantics." />
