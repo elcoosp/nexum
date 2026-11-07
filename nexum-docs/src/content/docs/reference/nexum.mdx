@@ -1,0 +1,61 @@
+---
+title: nexum (Facade)
+description: The one-dependency facade — re-exports of core primitives, the platform module and the deep_link bootstrap attribute.
+type: reference
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+The `nexum` crate is a convenience facade: it pulls together the three building blocks — core primitives, OS platform layer and the bootstrap macro — so a desktop application needs exactly one dependency. Everything on this page is a re-export; the detailed behavior lives in the linked component references.
+
+## Re-exports
+
+| Item | Source | Description |
+| --- | --- | --- |
+| `Config`, `ConfigBuilder`, `AppLink` | `nexum-core` | Declarative configuration of schemes, app links and icon |
+| `DeepLinkHub` | `nexum-core` | Producer side of the event channel |
+| `DeepLinkHandle` | `nexum-core` | Consumer side (blocking, async, polling, stream) |
+| `DeepLinkEvent`, `Source` | `nexum-core` | The event payload and its origin |
+| `Error`, `Result` | `nexum-core` | The shared error type |
+| `DeepLinkStream` | `nexum-core` *(only with the `stream` feature)* | `Stream<Item = String>` over the handle |
+| `deep_link` | `nexum-macros` | `#[deep_link(schemes = ["myapp"])]` bootstrap attribute |
+| `platform` | `nexum-platform` | Whole module alias: `init`, `register`, `plist`, `mobile`, … |
+| `hub`, `set_hub`, `push_url`, `push_launch_url`, `register`, `init`, `init_with` | `nexum-platform` | Flat re-exports of the root platform functions |
+| `validate_bundle` | `nexum-platform` *(macOS targets only)* | Plist validator for the running app bundle |
+
+## Feature flags
+
+| Feature | Effect |
+| --- | --- |
+| `stream` | Enables `nexum-core/stream` and re-exports `DeepLinkStream` |
+| `single-instance` | Enables `nexum-platform/single-instance`, exposing `nexum::platform::single_instance` |
+
+## Usage
+
+The intended shape is one attribute on `main`:
+
+```rust
+use nexum::deep_link;
+
+#[deep_link(schemes = ["myapp"], icon = "/icons/app.png")]
+fn main() {
+    if let Ok(url) = _nexum_handle.recv_blocking() {
+        println!("opened {url}");
+    }
+}
+```
+
+Prefer explicit control? The attribute is optional — `nexum::platform::init(&config)` returns the same `DeepLinkHandle` without any macro:
+
+```rust
+use nexum::{Config, platform};
+
+let config = Config::builder().scheme("myapp").build().expect("valid config");
+let handle = platform::init(&config).expect("registration failed");
+```
+
+## Next steps
+
+- <LinkCard title="Core reference" href="/reference/core/" description="Config, DeepLinkHub, DeepLinkHandle, DeepLinkEvent signatures." />
+- <LinkCard title="Platform reference" href="/reference/platform/" description="init, register, plist, mobile and single-instance APIs." />
+- <LinkCard title="Macro reference" href="/reference/macros/" description="The #[deep_link] attribute syntax and expansion." />
