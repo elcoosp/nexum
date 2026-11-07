@@ -1,0 +1,48 @@
+---
+title: nexum-gpui Reference
+description: GPUI adapter — setup_deep_links, attach_deep_link and the callback-before-registration ordering.
+type: reference
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+`nexum-gpui` integrates deep links into GPUI applications (Zed-style UIs). The crate is **not a workspace member** and is not published to crates.io: GPUI itself moves with Zed's `main` branch, so `nexum-gpui` tracks it through a git dependency and is verified separately. Depend on it directly from the repository:
+
+```toml
+[dependencies]
+nexum-gpui = { git = "https://github.com/elcoosp/nexum" }
+```
+
+## API
+
+| Function | Signature | Description |
+| --- | --- | --- |
+| `setup_deep_links` | `fn setup_deep_links(app: &gpui::Application, config: &Config) -> Result<DeepLinkHandle>` | Creates a hub, installs GPUI's `on_open_urls` bridge, registers with the OS, returns the consumer handle |
+| `attach_deep_link` | `fn attach_deep_link<V: 'static>(handle: DeepLinkHandle, view: Entity<V>, cx: &mut App, on_url: impl Fn(&mut V, &mut gpui::Context<V>, String) + 'static)` | Spawns a GPUI async task that wakes your entity for every URL |
+
+## Ordering guarantee
+
+`setup_deep_links` performs its steps deliberately: it calls `app.on_open_urls(...)` **before** `nexum_platform::register(config)`. If the OS starts delivering URLs the instant registration completes, the callback is already installed and the events are not lost. Each URL the callback receives is pushed into the global hub with `nexum_platform::push_url` (errors ignored, as with all fire-and-forget bridges).
+
+Calling `setup_deep_links` a second time fails with `Error::HubAlreadySet` — the global hub can only be installed once per process.
+
+## Receiving URLs in a view
+
+```rust
+let handle = setup_deep_links(&app, &config)?;
+
+// after opening a window and creating your view entity:
+attach_deep_link(handle, view.clone(), cx, |view, _cx, url| {
+    view.set_url(url);
+});
+```
+
+`attach_deep_link` spawns a task on GPUI's executor and detaches it: for every received URL it updates the entity through `view.update(...)` and calls `cx.notify()` so GPUI re-renders. The task lives as long as the app or until the channel shuts down.
+
+> [!TIP]
+> The callback signature mirrors GPUI's own update closures — `(&mut V, &mut Context<V>, String)` — so state mutation and rendering invalidation follow the framework's normal rules.
+
+## Next steps
+
+- <LinkCard title="Choosing an adapter" href="/guides/choosing-an-adapter/" description="How the GPUI integration compares." />
+- <LinkCard title="Platform reference" href="/reference/platform/" description="register and the global hub the bridge feeds." />
