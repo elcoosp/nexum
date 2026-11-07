@@ -1,0 +1,48 @@
+---
+title: nexum-xilem Reference
+description: Xilem adapter — setup, the with_deep_links view wrapper and message-relay behavior.
+type: reference
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+`nexum-xilem` routes deep-link events into Xilem's view tree through a task-based relay. It re-exports the core types and the `platform` module alias like every adapter.
+
+## API
+
+| Item | Signature | Description |
+| --- | --- | --- |
+| `setup` | `fn setup(config: &Config) -> Result<()>` | Registers with the OS and stores the handle process-globally; `HubAlreadySet` on double init |
+| `handle` | `fn handle() -> &'static DeepLinkHandle` | The stored handle; **panics** if `setup` was not called |
+| `with_deep_links` | `fn with_deep_links<State, V>(view: V, on_url: impl Fn(&mut State, String) + Send + Sync + 'static) -> impl WidgetView<State>` | Wraps a view: forks a Xilem task that forwards URLs to `on_url` |
+
+`State` must be `'static` and `V` a `WidgetView<State>`. No feature flags exist — everything is always available.
+
+## Usage
+
+```rust
+nexum_xilem::setup(&config).expect("deep-link setup");
+
+fn app_logic(state: &mut AppState) -> impl WidgetView<AppState> + use<> {
+    let content = /* your normal view */;
+    with_deep_links(content, |state: &mut AppState, url| {
+        state.last_url = Some(url);
+    })
+}
+```
+
+## How delivery works
+
+`with_deep_links` builds a `task_raw` whose async body awaits `handle.recv()` in a loop and pushes each URL through Xilem's `MessageProxy`; the returned task is combined with your view via `fork`. Consequences worth knowing:
+
+- The `on_url` callback runs on the **app thread**, exactly like a regular Xilem event callback — no extra synchronization needed for `State`.
+- The relay ends silently when the view tree or driver goes away (the proxy reports a send error), so teardown is automatic.
+- Calling `handle()` or `with_deep_links` before `setup` panics with `nexum_xilem::setup must be called before consuming deep links` — a deliberate programming-error signal.
+
+> [!TIP]
+> Because `setup` is fallible and `with_deep_links` is not, call `setup` in `main` before constructing the `Xilem` driver, then treat the rest of the integration as infallible.
+
+## Next steps
+
+- <LinkCard title="Async consumption guide" href="/guides/async-consumption/" description="The recv loop this adapter runs on your behalf." />
+- <LinkCard title="Core reference" href="/reference/core/" description="The handle stored by setup." />
