@@ -1,0 +1,61 @@
+---
+title: The deep_link Attribute
+description: Syntax, accepted keys, generated code and constraints of the nexum-macros bootstrap attribute.
+type: reference
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+`#[deep_link]` is the attribute macro exported by `nexum-macros` (and re-exported by the `nexum` facade). It rewrites a `fn main` so that deep-link registration happens **before** the first statement of the body executes, binding the consumer handle to a generated `_nexum_handle` binding.
+
+## Syntax
+
+| Key | Type | Required | Effect |
+| --- | --- | --- | --- |
+| `schemes` | array of string literals, or a single string literal | **Yes** | One `Config::builder().scheme(...)` call per entry |
+| `app_links` | array of string literals, or a single string literal | No | One `AppLink::new(host, [])` per entry (no path prefixes) |
+| `icon` | single string literal | No | Passed to `.icon_path(...)` |
+
+Unknown keys, bare values, or non-string values fail to compile with a targeted message — for example ``unknown key `foo`; expected `schemes`, `app_links` or `icon` ``.
+
+```rust
+use nexum::deep_link;
+
+#[deep_link(schemes = ["myapp", "myapp-alt"], icon = "/icons/app.png")]
+fn main() {
+    if let Ok(url) = _nexum_handle.recv_blocking() {
+        println!("opened {url}");
+    }
+}
+```
+
+## Generated code
+
+The macro leaves your attributes, visibility and signature untouched and prepends one binding to the body:
+
+```rust
+let _nexum_handle = {
+    let __nexum_config = ::nexum::Config::builder()
+        .scheme("myapp")
+        .build()
+        .expect("nexum: invalid deep-link configuration");
+    ::nexum::platform::init(&__nexum_config)
+        .expect("nexum: deep-link initialization failed")
+};
+// ...your original statements...
+```
+
+## Constraints
+
+- **`fn main` only.** Applying the attribute to any other function is a compile error: `` `#[deep_link]` can only be applied to `fn main` ``.
+- **Requires the facade.** The expansion references `::nexum::` absolute paths, so the macro only works when the `nexum` facade crate is a dependency — not with `nexum-macros` alone.
+- **Panics on failure by design.** Invalid configuration and failed registration both panic with descriptive messages. If your app must recover — for example to show a dialog — call `nexum::platform::init` directly and handle the `Result` instead of using the attribute.
+- **Registration timing.** Everything inside the generated block runs before your first statement, which also satisfies macOS's main-thread requirement for registration.
+
+> [!TIP]
+> The generated `_nexum_handle` is a regular `DeepLinkHandle`: every consumption pattern from the [core reference](/reference/core/) — blocking, async, stream, bounded — applies unchanged.
+
+## Next steps
+
+- <LinkCard title="Facade reference" href="/reference/nexum/" description="What the nexum crate re-exports alongside the macro." />
+- <LinkCard title="Build your first deep link" href="/tutorials/getting-started/" description="The attribute in a complete, runnable walkthrough." />
