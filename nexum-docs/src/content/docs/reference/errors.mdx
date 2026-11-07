@@ -1,0 +1,50 @@
+---
+title: Error Reference
+description: Every variant of nexum_core::Error with its exact display message and the situations that produce it.
+type: reference
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+The whole nexum stack shares one error type: `nexum_core::Error`, built with `thiserror`. The type alias `Result<T, E = Error>` is re-exported alongside it, and `Error` is `Send + Sync + 'static` so it crosses threads and tasks freely.
+
+| Variant | Display message | Produced by |
+| --- | --- | --- |
+| `NoSchemes` | `at least one URL scheme must be configured` | `Config::validate` or `ConfigBuilder::build` with zero schemes |
+| `InvalidScheme(String)` | `` `{0}` is not a valid URL scheme (RFC 3986: ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )) `` | Scheme fails the RFC 3986 grammar check |
+| `InvalidHost(String)` | `` `{0}` is not a valid app-link host `` | App link with an empty host |
+| `HubAlreadySet` | `the deep-link hub is already initialized for this process` | `set_hub` or `init`/`init_with` called a second time (including adapters' internal setup) |
+| `HubNotSet` | `no deep-link hub is initialized yet; call nexum_platform::init first` | Platform operation (`push_url`, `single_instance::acquire`, mobile intake) before initialization |
+| `HubClosed` | `the deep-link channel has been shut down` | Blocking receive after every sender and receiver dropped |
+| `QueueFull` | `the bounded deep-link queue is full` | `try_push_*` on a bounded hub at capacity |
+| `MalformedUrl(String, url::ParseError)` | `` `{0}` is not a valid URL: {1} `` | Lazy parse failure via `DeepLinkEvent::parse_url` or `recv_url` items |
+| `Platform(String)` | `platform registration failed: {0}` | Backend-specific failures: `xdg-mime` non-zero exit, main-thread violation on macOS, single-instance protocol errors |
+| `Io(std::io::Error)` | *(transparent)* | Filesystem and socket I/O underneath registration |
+
+## Matching examples
+
+Error variants are plain enum variants, so `matches!` is the idiomatic guard:
+
+```rust
+use nexum_core::{Config, Error};
+
+let err = Config::builder().build().expect_err("no schemes");
+assert!(matches!(err, Error::NoSchemes));
+
+let err = Config::validate_scheme("1bad").expect_err("bad scheme");
+assert!(matches!(err, Error::InvalidScheme(_)));
+```
+
+## Recovery guidance
+
+- `NoSchemes`, `InvalidScheme`, `InvalidHost` are configuration bugs — fail fast at startup.
+- `HubAlreadySet` indicates double initialization; adapters surface the same variant when their own setup runs twice.
+- `HubNotSet` means an ordering mistake: initialize the hub before any push, intake or `acquire` call.
+- `HubClosed` and `QueueFull` are *flow control*, not faults: consumers stopped or backpressure engaged. Handle them in the retry/shutdown logic of your consumer loop.
+- `Platform` wraps the largest class of environment problems — missing `xdg-mime`, a non-main-thread registration on macOS, or single-instance protocol mismatches. The inner string names the exact cause and is stable enough to log verbatim.
+
+> [!TIP]
+> `Io` is transparent (`#[from]`), so `?` converts a `std::io::Error` into `Error` automatically in fallible glue code.
+
+- <LinkCard title="Core reference" href="/reference/core/" description="Config and hub APIs that produce these errors." />
+- <LinkCard title="Platform reference" href="/reference/platform/" description="Registration functions and their error behavior." />
