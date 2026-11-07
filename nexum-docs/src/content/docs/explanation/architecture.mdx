@@ -1,0 +1,58 @@
+---
+title: Architecture Explained
+description: How the nexum workspace is layered, how events flow from the operating system to your code, and where each crate sits in the picture.
+type: explanation
+---
+
+import { FileTree, LinkCard } from '@astrojs/starlight/components';
+
+Nexum solves one problem — getting a URL from the operating system into your Rust process — and it solves it by splitting the problem into layers with minimal dependencies between them. Understanding the layering explains almost every API decision you meet in the reference pages.
+
+## The workspace layout
+
+```jsx
+<FileTree>
+- nexum/            (facade: re-exports + the deep_link attribute)
+- nexum-macros/     (proc-macro: #[deep_link] bootstrap)
+- nexum-core/       (Config, DeepLinkHub, DeepLinkHandle, DeepLinkEvent)
+- nexum-platform/   (OS registration, global hub, plist, mobile, single-instance)
+- nexum-floem/      (adapter: Floem)
+- nexum-xilem/      (adapter: Xilem)
+- nexum-dioxus/     (adapter: Dioxus desktop)
+- nexum-leptos/     (adapter: Leptos, wasm-capable)
+- nexum-gpui/       (adapter: GPUI — outside the workspace, tracks Zed)
+- examples/         (one runnable app per framework)
+</FileTree>
+```
+
+Only the bottom of the stack knows about operating systems. `nexum-core` compiles with `#![forbid(unsafe_code)]` and no platform code at all; `nexum-platform` contains the three cfg-gated desktop backends plus portable generators; the adapters contain nothing but bridge logic into their framework's event model.
+
+## The event pipeline
+
+Every deep link follows the same three hops:
+
+1. **Producer** — something pushes a URL into a `DeepLinkHub` as a `String`. The producer can be a platform relay (command-line arguments on Windows and Linux, the `GURL` Apple-event delegate on macOS), the mobile intake functions, a second instance handing off over a socket, or your own test code.
+2. **Queue** — the hub is an `async-channel` MPSC queue, unbounded by default and bounded on demand. Producers never need an executor; the queue is equally happy on a native thread pool, an async runtime, or wasm.
+3. **Consumer** — one or more `DeepLinkHandle`s receive `DeepLinkEvent`s. Delivery is *round-robin per event*: each URL goes to exactly one live consumer. Cloning a handle adds a consumer for load-sharing, not for broadcasting.
+
+The platform layer makes this concrete: `init` (or `init_with`) installs a hub as the **process-global** hub, runs `register`, and hands you a handle. From then on, `push_url` and `push_launch_url` — the functions the OS-bridging code calls — feed that global hub. Your application code never talks to the OS directly; it only touches the handle.
+
+## Where adapters fit
+
+An adapter is deliberately thin. Each one:
+
+- calls `nexum_platform::init` for you (exactly once — a second call fails with `HubAlreadySet`),
+- stores or wraps the returned `DeepLinkHandle`,
+- relays events into the framework's own reactivity: a Floem `ReadSignal`, a Xilem task, a Dioxus `Signal` fed by `use_future`, a Leptos `RwSignal` driven by `spawn_local`, or a GPUI entity update.
+
+Because the adapter side of the contract reduces to "poll a handle and forward strings", the same guarantees hold everywhere: URLs arrive as `String`s, sources are classified by `Source`, and backpressure or hand-off features slot in beneath any adapter.
+
+## The opt-in layers
+
+Two features extend the pipeline without changing it. **Bounded mode** (`DeepLinkHub::bounded(n)` installed via `init_with`) turns the queue into a backpressure point: producers block (native) or drop (wasm) when the consumer falls behind. **Single-instance hand-off** (`single-instance` feature) adds a local socket so a second launch forwards its command-line URLs into the primary's hub — the second process sees `HandedOff` and exits. Neither feature requires touching your consumption code; both operate entirely on the producer side of the pipeline.
+
+> [!TIP]
+> The example apps in the repository are the executable version of this page: each `examples/*-basic` crate wires one adapter end to end, and the leptos example demonstrates the hub-owned browser variant.
+
+- <LinkCard title="Core reference" href="/reference/core/" description="The hub, handle and event types in detail." />
+- <LinkCard title="Event sources explained" href="/explanation/event-sources/" description="How producers label the URLs they push." />
