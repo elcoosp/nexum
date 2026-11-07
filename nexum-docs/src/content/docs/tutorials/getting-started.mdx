@@ -1,0 +1,112 @@
+---
+title: Build Your First Deep Link
+description: Walk through creating a small Rust app that registers a custom URL scheme and receives deep-link events with nexum.
+type: tutorial
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+In this tutorial you build a complete Rust program that owns the `myapp://` URL scheme. You register the scheme with your operating system, launch the app, open a `myapp://` URL from a terminal or browser, and watch the URL arrive inside your process. Along the way you meet the three pieces every nexum app uses: a `Config`, OS registration, and a `DeepLinkHandle`.
+
+## Prerequisites
+
+- Rust 1.85 or newer (nexum uses edition 2024). Check with `rustc --version`.
+- A terminal on Windows, macOS or Linux.
+- Roughly ten minutes.
+
+## Step 1 — Create a project
+
+Create a new binary crate and change into it:
+
+```bash
+cargo new nexum-demo
+cd nexum-demo
+```
+
+## Step 2 — Add the nexum facade
+
+The `nexum` facade is the one-dependency path: it re-exports `Config`, the platform layer, and the `#[deep_link]` attribute.
+
+```bash
+cargo add nexum
+```
+
+Your `Cargo.toml` gains:
+
+```toml
+[dependencies]
+nexum = "0.3"
+```
+
+## Step 3 — Write the bootstrap
+
+Replace the contents of `src/main.rs` with:
+
+```rust
+use nexum::deep_link;
+
+#[deep_link(schemes = ["myapp"])]
+fn main() {
+    // Registration happens before this body runs; the consumer
+    // handle is bound to `_nexum_handle`.
+    if let Ok(url) = _nexum_handle.recv_blocking() {
+        println!("opened {url}");
+    }
+}
+```
+
+The `#[deep_link]` attribute rewrites your `main` so that nexum builds a validated `Config` and calls `nexum::platform::init` *before* your first statement executes. The returned `DeepLinkHandle` is bound to the generated `_nexum_handle` binding, which you then use to receive URLs.
+
+> [!CAUTION]
+> The generated code panics if the configuration is invalid or the OS registration fails. For fallible control — for example, to show an error dialog — use `nexum::platform::init` directly instead of the attribute.
+
+## Step 4 — Run the app
+
+Start the program and leave it running:
+
+```bash
+cargo run
+```
+
+On first run, nexum registers `myapp://` for your user:
+
+- **Windows** — writes `HKCU\Software\Classes\myapp` with a `shell\open\command` entry pointing at the current executable.
+- **macOS** — installs an Apple-event handler for the `GURL` event class. Packaged apps also need the scheme declared in `Info.plist`, which you can generate with `nexum::platform::plist::url_types_xml`.
+- **Linux** — writes a `.desktop` file into your user applications directory and calls `xdg-mime default` to bind the scheme.
+
+## Step 5 — Trigger the deep link
+
+With the app still running, open a `myapp://` URL from another terminal:
+
+```bash
+# macOS
+open "myapp://open/settings"
+
+# Linux
+xdg-open "myapp://open/settings"
+
+# Windows (PowerShell)
+Start-Process "myapp://open/settings"
+```
+
+The operating system looks up the handler and launches — or, on Windows and Linux, re-launches — the registered executable with the URL. Nexum detects the URL among the process arguments and relays it into your app.
+
+Where the output appears depends on your platform:
+
+- **macOS** — the URL travels to the *running* instance as an Apple event, and the first app prints `opened myapp://open/settings`.
+- **Windows and Linux** — the OS starts a *second* instance with the URL on its command line; that second process reaches the `println!` in its own terminal. To forward the URL into the original process and exit the second instance, enable the single-instance feature described in [Single-instance hand-off](/guides/single-instance/).
+
+## What you built
+
+You now have a Rust program that owns a URL scheme end to end: the OS launches it for `myapp://` URLs, nexum extracts the URL from the launch context, and `recv_blocking()` hands it to your code as a `String`.
+
+> [!TIP]
+> Every event is a `DeepLinkEvent` with a `url` and a `source`. Call `recv_event_blocking()` instead of `recv_blocking()` to see where an event came from — runtime hand-offs and command-line cold starts are distinguishable via `Source`.
+
+## Next steps
+
+Adapt the same workflow to your UI framework of choice, or dive into the primitives:
+
+- <LinkCard title="Choosing an adapter" href="/guides/choosing-an-adapter/" description="Compare the Floem, Xilem, Dioxus, Leptos and GPUI integrations." />
+- <LinkCard title="Platform setup guides" href="/guides/macos-setup/" description="Declare your scheme in Info.plist, the Windows registry or a .desktop file." />
+- <LinkCard title="Core API reference" href="/reference/core/" description="Config, DeepLinkHub, DeepLinkHandle and DeepLinkEvent signatures." />
