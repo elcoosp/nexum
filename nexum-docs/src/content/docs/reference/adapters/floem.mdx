@@ -1,0 +1,53 @@
+---
+title: nexum-floem Reference
+description: Floem adapter — setup, the signal bridge, feature flags and threading notes.
+type: reference
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+`nexum-floem` integrates deep links into Floem's reactive runtime. It re-exports the core types (`Config`, `DeepLinkHandle`, `DeepLinkEvent`, `Source`, `Error`, `Result`, …) and the whole `platform` module alias, so adapter and primitives share one import.
+
+## API
+
+| Function | Signature | Feature | Description |
+| --- | --- | --- | --- |
+| `setup` | `fn setup(config: &Config) -> Result<DeepLinkHandle>` | always | Thin wrapper over `nexum_platform::init`; returns the raw consumer handle |
+| `signal` | `fn signal(config: &Config) -> floem::reactive::ReadSignal<Option<String>>` | `signal` | Registers and returns a reactive signal holding the latest URL |
+
+## The signal bridge
+
+`signal(&config)` performs registration (**panicking** on failure), then spawns a background thread named `nexum-floem` that blocks on `recv_blocking` and forwards each URL into a one-slot crossbeam mailbox. The mailbox is connected to Floem's runtime with `create_signal_from_channel`, so the UI thread wakes only when a URL arrives. The returned signal starts as `None` and holds the most recent URL.
+
+```rust
+use floem::prelude::*;
+use nexum_floem::{Config, signal};
+
+let config = Config::builder().scheme("myapp").build().expect("valid config");
+let url_signal = signal(&config); // ReadSignal<Option<String>>
+
+// in a view:
+label(move || url_signal.get().unwrap_or_else(|| "No deep link received".into()))
+```
+
+> [!CAUTION]
+> `signal` is `#[must_use]` and panics on registration failure (`nexum-floem: deep-link registration failed`). For fallible control, call `setup` and wire the returned `DeepLinkHandle` through your own channel; the signal feature is a convenience, not a requirement.
+
+## Feature flags
+
+| Feature | Default | Pulls in | Enables |
+| --- | --- | --- | --- |
+| `signal` | off | `floem` 0.2, `crossbeam-channel` | The `signal()` helper |
+
+Without the feature the crate depends only on `nexum-core` and `nexum-platform` — useful for setups that consume the raw handle with their own threading.
+
+## Threading notes
+
+- The bridge thread blocks on the handle, so it must never be the UI thread — nexum creates it for you in `signal`.
+- The `ReadSignal` updates only inside a live Floem event loop; values pushed before `floem::launch` are visible once the loop starts.
+- Clone the `DeepLinkHandle` from `setup` if you need a second consumer alongside the signal; the hub delivers each event to exactly one consumer (round-robin).
+
+## Next steps
+
+- <LinkCard title="Choosing an adapter" href="/guides/choosing-an-adapter/" description="Compare floem with the other four integrations." />
+- <LinkCard title="Core reference" href="/reference/core/" description="The DeepLinkHandle consumed under the hood." />
