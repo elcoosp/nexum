@@ -1,0 +1,64 @@
+---
+title: Use a Bounded Hub
+description: Apply backpressure to deep-link events with DeepLinkHub::bounded and handle QueueFull errors deliberately.
+type: how-to
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+By default nexum's hub queue is unbounded: producers never block and events are never dropped. When your consumer might be slow — a UI thread under load, a network call in the pipeline — a **bounded** hub gives you explicit backpressure instead of unbounded memory growth.
+
+## Create and install a bounded hub
+
+Build the hub yourself and install it with `init_with`, which returns the consumer handle for it:
+
+```rust
+use nexum::platform::init_with;
+use nexum_core::{Config, DeepLinkHub};
+
+let config = Config::builder().scheme("myapp").build().expect("valid config");
+
+let hub = DeepLinkHub::bounded(16);
+let handle = init_with(&config, hub).expect("deep-link init");
+```
+
+`init_with` installs the hub as the process-global hub and runs the usual OS registration, so everything downstream — platform relays, adapter bridges, `push_url` — feeds the bounded queue.
+
+## Push behavior
+
+| Method | When the queue is full (native) | On wasm |
+| --- | --- | --- |
+| `push_url`, `push_launch_url`, `push_event` | Blocks until a slot frees | Drops the event (non-blocking) |
+| `try_push_url`, `try_push_launch_url`, `try_push_event` | Returns `Err(Error::QueueFull)` immediately | Same |
+
+The capacity is clamped to at least one slot: `DeepLinkHub::bounded(0)` behaves like a one-slot queue. `hub.capacity()` reports the effective limit (`None` for unbounded hubs).
+
+The following behavior is verified by the crate's own tests:
+
+```rust
+let hub = DeepLinkHub::bounded(2);
+let handle = hub.handle();
+
+hub.try_push_url("myapp://1").expect("room for 1");
+hub.try_push_launch_url("myapp://2").expect("room for 2");
+assert!(matches!(
+    hub.try_push_url("myapp://3"),
+    Err(nexum_core::Error::QueueFull)
+));
+
+// Draining one event makes room for exactly one more.
+handle.recv_event_blocking().expect("event");
+hub.try_push_url("myapp://3").expect("room again");
+```
+
+## Choosing a capacity
+
+Pick the bound from your consumer's worst-case drain interval: a UI adapter that wakes per event typically wants a small bound (8–32) so a frozen UI stops the producer quickly, while a batch worker that drains with `drain_events` can afford a larger one. Because producers *block* when full on native targets, an oversized bound only costs memory, whereas an undersized one adds backpressure you must observe in tests.
+
+> [!TIP]
+> For fire-and-forget semantics on native targets keep the default unbounded hub; bounded mode exists to make overload *observable*, not to route around it.
+
+## Next steps
+
+- <LinkCard title="Core API reference" href="/reference/core/" description="The full DeepLinkHub and DeepLinkHandle signatures." />
+- <LinkCard title="Async consumption" href="/guides/async-consumption/" description="Stream-based and async-await consumption patterns." />
