@@ -1,0 +1,67 @@
+---
+title: Single-Instance Hand-Off
+description: Forward deep links from a second app instance into the running one with nexum's single-instance feature.
+type: how-to
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+On Windows and Linux a deep link usually launches a **second** instance of your app. The `single-instance` feature turns that launch into a hand-off: the second instance forwards its URLs to the original process over a local socket and exits, so only one copy of your app stays alive.
+
+## Enable the feature
+
+```toml
+[dependencies]
+nexum = { version = "0.3", features = ["single-instance"] }
+```
+
+The module lives in the platform layer, so `nexum::platform::single_instance` is the entry point (or `nexum_platform::single_instance` if you depend on the platform crate directly).
+
+## Use it at startup
+
+Call `acquire` **after** the hub is initialized (`init`, `init_with` or `set_hub` — otherwise you get `Error::HubNotSet`), passing the URLs the current process should deliver:
+
+```rust
+use nexum::platform::single_instance::{acquire, Acquisition};
+
+let urls = config.extract_launch_urls(std::env::args().skip(1));
+
+match acquire(&config, &urls)? {
+    Acquisition::Primary(_guard) => {
+        // This process owns the deep-link socket.
+        // Keep `_guard` alive for the whole app lifetime.
+        run_app();
+    }
+    Acquisition::HandedOff { forwarded } => {
+        // Another instance answered; `forwarded` URLs were
+        // delivered to it. Exit this process now.
+    }
+}
+```
+
+Each forwarded URL arrives in the primary's hub as a normal `DeepLinkEvent` with `Source::System`, so consumers treat hand-offs exactly like OS-delivered links.
+
+> [!CAUTION]
+> Dropping the `PrimaryGuard` closes the socket immediately. Hold it in your app state for the process lifetime — the compiler annotates it `#[must_use]` for exactly this reason.
+
+## Transport details
+
+| Property | Unix | Windows |
+| --- | --- | --- |
+| Socket | Unix domain socket named `nexum-{hash}.sock` (FNV-1a of the lowercased schemes) | Loopback TCP on `127.0.0.1`, port `47000 + (hash % 1000)` |
+| Directory | `XDG_RUNTIME_DIR` if set, else the system temp directory | System temp directory |
+| Protocol | `NEXUM/1 {count}` header, one URL per line, terminated by an `OK` acknowledgment | Same protocol |
+| Handshake timeout | 2 seconds | 2 seconds |
+
+The socket name derives from your configured schemes, so apps with different schemes never collide. Foreign peers are rejected by the magic-header check, and a handshake that ends without the expected `OK` fails with an error naming the cause.
+
+## Troubleshooting
+
+- **`stale single-instance socket: the previous instance crashed`** — a previous primary died without cleanup and left the socket file. Nexum detects the connection refusal and reports it explicitly; the next run takes over as primary.
+- **`the running instance did not acknowledge the hand-off`** — something answered on the socket but did not speak the nexum protocol, or the primary stalled past the 2-second timeout.
+- **URLs not arriving** — confirm `acquire` runs after hub initialization in *both* instances, and that the second instance passes its extracted command-line URLs as the `urls` slice.
+
+## Next steps
+
+- <LinkCard title="Event sources explained" href="/explanation/event-sources/" description="Why forwarded links appear as Source::System." />
+- <LinkCard title="Platform API reference" href="/reference/platform/" description="The single_instance module signatures." />
