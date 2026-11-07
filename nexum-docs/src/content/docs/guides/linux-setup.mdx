@@ -1,0 +1,62 @@
+---
+title: Set Up Deep Links on Linux
+description: Learn how nexum writes a .desktop entry, binds schemes with xdg-mime, and where to look when registration fails.
+type: how-to
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+On Linux, nexum registers URL schemes the standards-compliant way: it writes a freedesktop `.desktop` entry into your user's applications directory and asks `xdg-mime` to bind each scheme to that entry. Everything happens inside `nexum::platform::register`, which `init` and the `#[deep_link]` bootstrap call for you.
+
+## The registration flow
+
+1. nexum resolves the running executable with `std::env::current_exe()` and derives an application name from its file stem, keeping only `[A-Za-z0-9._-]`. If nothing survives the sanitization, the fallback name is `nexum-app`.
+2. It creates `{data_local_dir}/applications/` if needed and writes `{app_name}.desktop`. The directory comes from `dirs::data_local_dir()`, so `XDG_DATA_HOME` is honored when set.
+3. For every configured scheme it invokes:
+
+```bash
+xdg-mime default {app_name}.desktop x-scheme-handler/{scheme}
+```
+
+A non-zero exit status from `xdg-mime` surfaces as `Error::Platform` — typically meaning the tool is not installed (`sudo apt install xdg-utils` on Debian-based systems) or the environment has no usable MIME database.
+
+## The generated desktop entry
+
+The entry nexum writes follows this exact template:
+
+```ini
+[Desktop Entry]
+Type=Application
+Name={app_name}
+Exec={quoted_exec} %u
+StartupNotify=false
+Icon={icon}
+MimeType=x-scheme-handler/myapp;x-scheme-handler/other;
+```
+
+Two details worth knowing:
+
+- **`Exec` quoting** — the executable path is emitted through a quoting helper: `%` signs are doubled (`%` → `%%`) to survive freedesktop field codes, and the path is wrapped in double quotes (with embedded quotes escaped) whenever it contains spaces.
+- **`Icon` fallback** — when `Config::icon_path` is unset, the entry falls back to the executable path itself, so the MIME association still resolves cleanly.
+
+You set both values through the config:
+
+```rust
+let config = Config::builder()
+    .scheme("myapp")
+    .icon_path("/usr/share/icons/myapp.png")
+    .build()
+    .expect("valid config");
+```
+
+## How URLs reach your app
+
+The `%u` field code makes the OS start your executable with the URL as an argument — the same command-line cold-start shape as Windows. `register` relays those arguments into the hub via `Config::extract_launch_urls`, producing `DeepLinkEvent`s with `Source::CommandLine`. A second launch therefore consumes its own URL unless you enable [single-instance hand-off](/guides/single-instance/), which forwards it to the original instance over a Unix socket.
+
+> [!CAUTION]
+> Registration is idempotent but re-invoked on every launch. If you move or rename the executable, the stale `.desktop` entry remains until the next registration overwrites it under the new app name.
+
+## Next steps
+
+- <LinkCard title="Single-instance hand-off" href="/guides/single-instance/" description="Forward URLs from second instances over a Unix socket." />
+- <LinkCard title="Platform API reference" href="/reference/platform/" description="The init and register signatures and error behavior." />
