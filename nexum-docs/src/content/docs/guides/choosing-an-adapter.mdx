@@ -1,0 +1,92 @@
+---
+title: Choosing an Adapter
+description: Compare nexum's five UI-framework adapters and pick the one that matches your application's reactive model.
+type: how-to
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+All five adapters wrap the same core: each one calls `nexum_platform::init` under the hood, then bridges incoming `DeepLinkEvent`s into the idioms of its framework. The differences are in what the adapter hands back to you — a raw handle, a signal, a view wrapper, or a one-call launcher. Use this guide to match the integration style to your framework; the linked reference pages carry the exact signatures.
+
+## Decision table
+
+| You are building with | Add | Integration entry point | You receive |
+| --- | --- | --- | --- |
+| Floem | `nexum-floem` + `signal` feature | `nexum_floem::signal(&config)` | `ReadSignal<Option<String>>` updated on a background thread |
+| Xilem | `nexum-xilem` | `nexum_xilem::setup(&config)` then `with_deep_links(view, on_url)` | Deep links routed into your view callbacks |
+| Dioxus (desktop) | `nexum-dioxus` | `nexum_dioxus::launch_desktop(&config, desktop_cfg, app)` | `use_deep_link()` hook → `Signal<Option<String>>` |
+| Leptos (wasm-capable) | `nexum-leptos` + `signal` feature | `nexum_leptos::signal(&config)` | `RwSignal<Option<String>>` driven by `spawn_local` |
+| GPUI / Zed-style app | `nexum-gpui` (git dep) | `nexum_gpui::setup_deep_links(&app, &config)` | `DeepLinkHandle` + `attach_deep_link` into any `Entity` |
+| No framework | `nexum` or `nexum-core` | `nexum::platform::init(&config)` | Raw `DeepLinkHandle` — blocking, async or stream |
+
+## Minimal usage per framework
+
+### Floem
+
+```rust
+let config = Config::builder().scheme("myapp").build().expect("valid config");
+let url_signal = signal(&config); // ReadSignal<Option<String>>
+```
+
+The `signal` helper spawns a background thread named `nexum-floem` that blocks on the handle and feeds Floem's reactive runtime through `create_signal_from_channel`. The UI thread wakes only when a URL arrives.
+
+### Xilem
+
+```rust
+nexum_xilem::setup(&config).expect("deep-link setup");
+// in your app logic:
+let content = with_deep_links(base_view, |state: &mut AppState, url| {
+    state.last_url = Some(url);
+});
+```
+
+`with_deep_links` forks a Xilem task onto your view; the callback runs on the app thread like any other Xilem event callback.
+
+### Dioxus
+
+```rust
+#[component]
+fn App() -> Element {
+    let deep_link = use_deep_link(); // Signal<Option<String>>
+    rsx! { p { "Last deep link: {deep_link:?}" } }
+}
+
+// one-call launch wires tao's Opened events into the hub:
+launch_desktop(&nexum_config, desktop_config, app);
+```
+
+`launch_desktop` performs setup, attaches the tao `Event::Opened` bridge, and launches your app — `use_deep_link()` then works like any other hook.
+
+### Leptos
+
+```rust
+// native: one call registers and returns a reactive signal
+let url_signal = signal(&config); // RwSignal<Option<String>>
+```
+
+In the browser (where scheme registration is impossible), build your own hub and call `signal_from_handle(&hub.handle())` — it never touches the OS and works under `wasm32-unknown-unknown`.
+
+### GPUI
+
+```rust
+let handle = setup_deep_links(&app, &config)?;
+attach_deep_link(handle, view.clone(), cx, |view, _cx, url| {
+    view.set_url(url);
+});
+```
+
+`setup_deep_links` installs GPUI's `on_open_urls` callback *before* OS registration so early events are not lost, and `attach_deep_link` spawns a task that wakes your entity for every URL.
+
+## Common rules
+
+- Call the adapter's setup **before** any other consumption — all adapters fail with `Error::HubAlreadySet` if initialized twice, and the handle-based ones panic if you consume before setup.
+- Events always surface as `String` URLs; parse them on demand with `DeepLinkEvent::parse_url` or the `url` crate.
+- For a bounded queue or single-instance hand-off, combine the adapter with the relevant guides — both work with every adapter because they live in the platform layer.
+
+## Adapter reference pages
+
+<LinkCard title="Floem reference" href="/reference/adapters/floem/" description="setup, signal and threading notes." />
+- <LinkCard title="Xilem reference" href="/reference/adapters/xilem/" description="setup, handle and with_deep_links." />
+- <LinkCard title="Dioxus reference" href="/reference/adapters/dioxus/" description="launch_desktop, use_deep_link and the tao bridge." />
+- <LinkCard title="Leptos reference" href="/reference/adapters/leptos/" description="signal, signal_from_handle and wasm support." />
+- <LinkCard title="GPUI reference" href="/reference/adapters/gpui/" description="setup_deep_links and attach_deep_link." />
