@@ -1,0 +1,42 @@
+---
+title: Event Sources Explained
+description: Why DeepLinkEvent carries a Source, what System and CommandLine actually mean per platform, and the macOS labeling nuance.
+type: explanation
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+Every `DeepLinkEvent` carries a `source` field with exactly two possible values: `Source::System` and `Source::CommandLine`. The distinction is useful once you know what each value *operationally* means — and where the naming is approximate.
+
+## The two sources
+
+| Source | Pushed by | Operational meaning |
+| --- | --- | --- |
+| `Source::System` | Windows registry hand-off relays, mobile intake (`push_intent_url`, `push_open_urls`), single-instance forwarding, `push_url` | A URL that materialized while your process was already the "live" handler — the OS or another process delivered it to you |
+| `Source::CommandLine` | Cold-start relay from `argv` (Windows, Linux), macOS `GURL` Apple events, `push_launch_url` | A URL that arrived with this process's own launch context or through the launch-event path |
+
+`Source` derives `Default` with `System` as the default variant, so `DeepLinkHub::push_url` (the plain URL push) produces `System`, while `push_launch_url` — "this URL comes from a launch" — produces `CommandLine`.
+
+## Cold start versus warm runtime
+
+The deepest reason the two-source model exists is that deep links reach you in two fundamentally different situations:
+
+- **Cold start** — the OS launches your process *for* a URL. On Windows and Linux the URL sits in `argv`, and `register` relays it through `Config::extract_launch_urls` with `push_launch_url`, so the very first event your consumer sees is `Source::CommandLine`.
+- **Warm runtime** — your app is already running when the user clicks a link. The OS must hand the URL to the live process: Apple Events on macOS, registry-protocol re-launch plus relay on Windows, `xdg-open` launching a new process on Linux, or framework callbacks (GPUI's `on_open_urls`, tao's `Opened`, mobile delegate methods).
+
+## The macOS nuance
+
+On macOS, warm-runtime URLs arrive as `GURL` Apple events — but nexum's delegate pushes them with `push_launch_url`, so the resulting events carry `Source::CommandLine`, not `Source::System`. The label reflects the *delivery mechanism* (an Apple event tied to the launch path) rather than the *situational* cold/warm split. Practical consequences:
+
+- Do not use `Source` on macOS to distinguish cold start from warm activation.
+- Do use it portably to distinguish "the OS handed me a URL" (`CommandLine` on macOS) from "a peer process or mobile glue handed me a URL" (`System` — including single-instance hand-offs, which forward as `System`).
+
+> [!CAUTION]
+> Future versions may refine the macOS labeling. If you need a hard guarantee on macOS today, test the behavior in your integration tests rather than relying on the variant name.
+
+## Why sources are plain strings underneath
+
+Events store the raw URL as a `String` and the source as a two-variant enum — deliberately minimal metadata. Anything richer (parsing into `url::Url`, extracting hosts and paths) is deferred to the consumer via `DeepLinkEvent::parse_url`, so producers stay allocation-cheap and the queue never blocks on parsing. See [design principles](/explanation/design-principles/) for the full rationale.
+
+- <LinkCard title="Core reference" href="/reference/core/" description="DeepLinkEvent and Source signatures." />
+- <LinkCard title="Single-instance hand-off" href="/guides/single-instance/" description="Forwarded URLs arrive as Source::System." />
