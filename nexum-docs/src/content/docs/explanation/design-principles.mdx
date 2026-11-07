@@ -1,0 +1,50 @@
+---
+title: Design Principles
+description: The engineering decisions behind nexum — String-only events, an executor-agnostic transport, safety guarantees, and the quality bar.
+type: explanation
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+Nexum's public surface looks small because several deliberate decisions keep it small. This page records the reasoning so the choices — and their trade-offs — are legible to contributors and reviewers.
+
+## Events are raw strings, parsed lazily
+
+The hub stores `String` URLs, and `DeepLinkEvent::parse_url` parses on demand. The alternative — parsing into `url::Url` at push time — would make every producer pay for validation, force `url`-crate types into the hot path, and turn a malformed URL into a producer-side panic or an error channel nobody asked for. With lazy parsing the push path is infallible and allocation-cheap, and the rare malformed URL becomes a normal `Some(Err(_))` item on `recv_url` instead of blocking the consumer.
+
+## One transport, any executor
+
+The queue is `async-channel`. That single choice yields: async receive methods that run on tokio, async-std, smol, GPUI's executor or a wasm event loop without adapter shims; blocking wrappers (`recv_blocking`) for native thread code; and wasm support where blocking is compiled out entirely. Adapters then bridge the handle into their framework's reactivity — signals, tasks, hooks — without nexum ever depending on a framework itself.
+
+## Safety and surface discipline
+
+- `nexum-core` is `#![forbid(unsafe_code)]`; unsafe exists only where the OS demands it (macOS Objective-C glue, single-instance test harnesses).
+- Every public item across the workspace carries a doc comment (`missing_docs` is enforced), and the workspace lints run clippy with `pedantic` — with zero allows.
+- Nothing is on by default: every crate ships `default = []`, so `cargo add` pulls only the platform layer you need. Features (`stream`, `single-instance`, `signal`) are pure opt-ins.
+- The macro panics loudly on misconfiguration rather than silently proceeding, while the fallible path (`platform::init`) stays available for applications that must recover.
+
+## The quality bar
+
+CI enforces the bar that the docs inherit from the code:
+
+| Check | Gate |
+| --- | --- |
+| Formatting and lints | `cargo fmt --check`, `clippy --workspace --all-targets --all-features -D warnings` |
+| Tests | 3-OS matrix, `--all-features` |
+| Coverage | 100 % line coverage on `nexum-core`, `nexum-platform`, `nexum-floem`, `nexum-leptos` via `cargo-llvm-cov --fail-under-lines 100` |
+| MSRV | `cargo check` on exactly 1.85 for the core crates; 1.88 for the leptos adapter |
+| Cross-target | macOS, Windows, Android, iOS backends type-checked on their real targets; wasm32 for core and leptos |
+| Docs | `cargo doc` with `-D warnings`; every public item documented |
+| Supply chain | Weekly `cargo-deny` and Dependabot updates |
+
+The coverage policy is unusual and intentional: logic crates (core, platform, floem, leptos) must keep every line tested — global state uses one serial integration test, the single-instance wire protocol is tested against in-memory streams, and each adapter's relay function is factored so it can be driven headlessly. Adapter crates whose value is mostly framework glue (xilem, dioxus, gpui, macros) are report-only by the same policy.
+
+## Versioning and releases
+
+The workspace releases as one version (currently **0.3.0**, MSRV 1.85, edition 2024, dual-licensed MIT OR Apache-2.0). Changelogs are generated from Conventional Commits with git-cliff at tag time, and crates publish in dependency order — core, platform, adapters, macros, then the facade. `nexum-gpui` is the deliberate exception: because it tracks Zed's `main` branch through a git dependency, it cannot publish to crates.io and is consumed directly from the repository.
+
+> [!TIP]
+> Design rationales in the repository live in docs/BRAINSTORM.md (decision ledger) and docs/COVERAGE.md (the coverage strategy) — this page summarizes the parts that shape the public API.
+
+- <LinkCard title="Architecture explained" href="/explanation/architecture/" description="The layering these principles produce." />
+- <LinkCard title="Error reference" href="/reference/errors/" description="How the decisions surface in the error model." />
