@@ -1,0 +1,29 @@
+/* Nexum docs — brand accent derived from the logo mark's electric blue.
+   Logo palette: #0a4be8 (hsl 222 92% 48%) and near-black #070a12.
+   Starlight switches themes via the data-theme attribute on <html>. */
+
+:root {
+        --sl-color-accent-low: hsl(222 92% 95%);
+        --sl-color-accent: hsl(222 92% 48%);
+        --sl-color-accent-high: hsl(222 85% 28%);
+        --nexum-brand-dark: #070a12;
+}
+
+[data-theme='dark'] {
+        --sl-color-accent-low: hsl(222 50% 16%);
+        --sl-color-accent: hsl(222 92% 60%);
+        --sl-color-accent-high: hsl(222 95% 80%);
+}
+
+/* Landing-page showcase of the original brand artwork (transparent-background
+   render with baked glow) — centered and framed so it reads as a deliberate
+   product shot on both themes. */
+.nexum-showcase {
+        margin-top: 2.5rem;
+        text-align: center;
+}
+
+/* Keep the site-header mark compact and vertically aligned with the title. */
+.site-title img {
+        padding: 0.25rem;
+}
