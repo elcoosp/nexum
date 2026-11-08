@@ -37,7 +37,9 @@
 //! the Windows port range is reported instead of silently swallowed.
 
 use std::io::{BufRead, BufReader, Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(unix)]
+use std::path::PathBuf;
 use std::time::Duration;
 
 use nexum_core::{Config, Error, Result};
@@ -143,12 +145,14 @@ fn parse_header(header: &str) -> Option<usize> {
 }
 
 /// Resolves the directory the Unix socket file is created in.
+#[cfg(unix)]
 fn runtime_directory() -> PathBuf {
     runtime_directory_from(std::env::var("XDG_RUNTIME_DIR").ok(), &std::env::temp_dir())
 }
 
 /// Pure core of [`runtime_directory`] so both branches stay testable
 /// without mutating the process environment.
+#[cfg(unix)]
 fn runtime_directory_from(xdg: Option<String>, fallback: &Path) -> PathBuf {
     match xdg {
         Some(dir) if !dir.is_empty() => PathBuf::from(dir),
@@ -405,7 +409,7 @@ pub(crate) fn expect_primary(acquisition: Acquisition) -> PrimaryGuard {
 
 /// Test helper: unwraps a [`Acquisition::HandedOff`], returning the count of
 /// forwarded URLs.
-#[cfg(test)]
+#[cfg(all(test, unix))]
 pub(crate) fn expect_handoff(acquisition: &Acquisition) -> usize {
     match acquisition {
         Acquisition::HandedOff { forwarded } => *forwarded,
@@ -495,6 +499,7 @@ mod tests {
         assert_eq!(*delivered.borrow(), ["myapp://ok".to_owned()]);
     }
 
+    #[cfg(unix)]
     #[test]
     fn accept_once_reports_a_dead_listener() {
         use std::io::Write as _;
@@ -568,6 +573,7 @@ mod tests {
         assert!(matches!(error, Error::Io(_)));
     }
 
+    #[cfg(unix)]
     #[test]
     fn runtime_directory_reads_the_environment() {
         // Whatever the environment holds, the result is a usable path.
@@ -580,6 +586,7 @@ mod tests {
         drop(expect_primary(Acquisition::HandedOff { forwarded: 0 }));
     }
 
+    #[cfg(unix)]
     #[test]
     #[should_panic(expected = "expected a hand-off, got the primary")]
     fn expect_handoff_rejects_a_primary() {
@@ -654,6 +661,7 @@ mod tests {
         assert_eq!(parse_header(""), None);
     }
 
+    #[cfg(unix)]
     #[test]
     fn runtime_directory_prefers_xdg_and_falls_back() {
         let fallback = Path::new("/tmp");
