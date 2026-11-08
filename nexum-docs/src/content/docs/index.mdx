@@ -6,6 +6,9 @@ template: splash
 hero:
         title: Nexum
         tagline: Framework-agnostic deep linking for Rust. Register custom URL schemes and receive deep-link events with one unified API across Windows, macOS and Linux — plus declarative support for Android and iOS.
+        image:
+                file: ../../assets/logo.png
+                alt: Nexum logo
         actions:
                 - text: Build your first deep link
                   link: /tutorials/getting-started/
@@ -42,28 +45,23 @@ The workspace is organized so you depend on exactly what you need: [`nexum-core`
 
 ## The ecosystem at a glance
 
-| Crate | Purpose |
-| --- | --- |
-| [`nexum`](/reference/nexum/) | Facade: core + platform + the `#[deep_link]` bootstrap attribute in one dependency |
-| [`nexum-core`](/reference/core/) | `DeepLinkHub` producer and `DeepLinkHandle` consumer — blocking, async, stream, bounded |
-| [`nexum-platform`](/reference/platform/) | OS registration, single-instance hand-off, plist validation, mobile intake |
-| [`nexum-macros`](/reference/macros/) | The `#[deep_link(schemes = ["myapp"])]` attribute |
-| [`nexum-floem`](/reference/adapters/floem/) | Floem adapter returning a reactive `ReadSignal<Option<String>>` |
-| [`nexum-xilem`](/reference/adapters/xilem/) | Xilem adapter with the `with_deep_links` view wrapper |
-| [`nexum-dioxus`](/reference/adapters/dioxus/) | Dioxus adapter with a one-call `launch_desktop` path |
-| [`nexum-leptos`](/reference/adapters/leptos/) | Leptos adapter returning `RwSignal<Option<String>>`, wasm-ready |
-| [`nexum-gpui`](/reference/adapters/gpui/) | GPUI adapter for Zed-style applications |
+| Crate                                         | Purpose                                                                                 |
+| --------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [`nexum`](/reference/nexum/)                  | Facade: core + platform + the `#[deep_link]` bootstrap attribute in one dependency      |
+| [`nexum-core`](/reference/core/)              | `DeepLinkHub` producer and `DeepLinkHandle` consumer — blocking, async, stream, bounded |
+| [`nexum-platform`](/reference/platform/)      | OS registration, single-instance hand-off, plist validation, mobile intake              |
+| [`nexum-macros`](/reference/macros/)          | The `#[deep_link(schemes = ["myapp"])]` attribute                                       |
+| [`nexum-floem`](/reference/adapters/floem/)   | Floem adapter returning a reactive `ReadSignal<Option<String>>`                         |
+| [`nexum-xilem`](/reference/adapters/xilem/)   | Xilem adapter with the `with_deep_links` view wrapper                                   |
+| [`nexum-dioxus`](/reference/adapters/dioxus/) | Dioxus adapter with a one-call `launch_desktop` path                                    |
+| [`nexum-leptos`](/reference/adapters/leptos/) | Leptos adapter returning `RwSignal<Option<String>>`, wasm-ready                         |
+| [`nexum-gpui`](/reference/adapters/gpui/)     | GPUI adapter for Zed-style applications                                                 |
 
 ## Platform support
 
-| Platform | Registration method | Runtime detection |
-| --- | --- | --- |
-| **Windows** | Registry (per-user) | CLI arguments |
-| **macOS** | `Info.plist` (validator included) | Apple Events (`GURL` via `objc2`) |
-| **Linux** | `.desktop` file + `xdg-mime` | CLI arguments |
+| Platform          | Registration method                       | Runtime detection                 |
+| ----------------- | ----------------------------------------- | --------------------------------- |
+| **Windows**       | Registry (per-user)                       | CLI arguments                     |
+| **macOS**         | `Info.plist` (validator included)         | Apple Events (`GURL` via `objc2`) |
+| **Linux**         | `.desktop` file + `xdg-mime`              | CLI arguments                     |
 | **Android / iOS** | Declarative (manifest / plist generators) | Framework glue → `mobile::push_*` |
-
-<div class="nexum-showcase">
-
-        <Image src={heroLogo} alt="Nexum brand mark" width={480} loading="eager" />
-</div>
