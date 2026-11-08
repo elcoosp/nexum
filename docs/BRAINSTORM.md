@@ -9,7 +9,7 @@
 | P1 | Delete unused dependencies (`url`, `thiserror`, `once_cell`, `rust-ini`, `windows-registry`, `objc2*`, `async-channel`, `crossbeam-channel`… were declared in crates that never use them) | ✅ | Every removed dep is compile time + attack surface + supply-chain risk saved. |
 | P2 | Replace `once_cell` with `std::sync::OnceLock` | ✅ | std since 1.80; one fewer third-party crate in the tree. |
 | P3 | Single unbounded MPSC as the transport; deep links are rare human-driven events, so no backpressure/bounded queues are needed | ✅ | KISS: `async-channel` handles sync+async+`Stream` with one primitive. |
-| P4 | Error-aware push instead of silently dropped URLs | ✅ | `nexum_platform::push_url` returns `Result` so a mis-initialized app fails loudly instead of black-holing deep links. |
+| P4 | Error-aware push instead of silently dropped URLs | ✅ | `nexum_platform::push_url` returns `Result` so a misconfigured app fails loudly instead of black-holing deep links. |
 | P5 | Avoid double event delivery: cold-start URLs are pushed exactly once, tagged with their source | ✅ | `Source::CommandLine` vs `Source::System` lets apps deduplicate cold-start handling. |
 | P6 | Typed URL parsing happens lazily, at consumption time, never on the hot push path (UI thread) | ✅ | Push = one `String` into a channel; parsing happens in the consumer. |
 | P7 | Named bridge thread for the Floem signal (`thread::Builder`) instead of anonymous `thread::spawn` | ✅ | Better crash diagnostics, negligible cost. |
