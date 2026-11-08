@@ -34,7 +34,7 @@ define_class!(
             _reply: &NSAppleEventDescriptor,
         ) {
             let param: Option<Retained<NSAppleEventDescriptor>> = unsafe {
-                msg_send![event, paramDescriptorForKeyword: 0x2d2d2d2d_u32]
+                msg_send![event, paramDescriptorForKeyword: 0x2d2d_2d2d_u32]
             };
 
             if let Some(param) = param {
@@ -81,8 +81,8 @@ pub fn register_delegate() -> Result<()> {
             &manager,
             setEventHandler: &*handler,
             andSelector: sel!(handleAppleEvent:withReplyEvent:),
-            forEventClass: 0x4755524c_u32, // 'GURL'
-            andEventID: 0x4755524c_u32      // 'GURL'
+            forEventClass: 0x4755_524c_u32, // 'GURL'
+            andEventID: 0x4755_524c_u32      // 'GURL'
         ];
     }
 
