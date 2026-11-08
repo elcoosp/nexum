@@ -51,7 +51,7 @@ static HANDLE: OnceLock<DeepLinkHandle> = OnceLock::new();
 /// # Errors
 ///
 /// Returns platform registration errors from
-/// [`nexum_platform::init`](nexum_platform::init), or
+/// [`nexum_platform::init`], or
 /// [`Error::HubAlreadySet`] when this crate was already initialized.
 pub fn setup(config: &Config) -> Result<()> {
     let handle = nexum_platform::init(config)?;
@@ -167,6 +167,10 @@ mod tests {
     }
 
     /// The single test in this binary touching the `HANDLE` static.
+    #[cfg_attr(
+        not(target_os = "linux"),
+        ignore = "platform registration is exercised on Linux"
+    )]
     #[test]
     fn setup_handle_and_view_construction() {
         // Registration side effects are redirected into a temp dir.
