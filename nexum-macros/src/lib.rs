@@ -2,7 +2,7 @@
 //! deep-linking toolkit.
 //!
 //! [`deep_link`] removes the bootstrap ceremony of a nexum application: it
-//! builds and validates the [`Config`](nexum_core::Config) and runs the
+//! builds and validates the `Config` (from `nexum_core`) and runs the
 //! platform registration (`nexum_platform::init`) before your `fn main`
 //! body executes. Use it through the [`nexum`](https://docs.rs/nexum)
 //! facade crate:
@@ -126,8 +126,8 @@ fn expect_string(expr: &Expr, key: &str) -> syn::Result<String> {
 ///
 /// Expands to the original `fn main` preceded by:
 ///
-/// - a validated [`Config`](nexum_core::Config) built from the arguments,
-/// - `nexum_platform::init(&config)`, whose [`DeepLinkHandle`] is bound to
+/// - a validated `Config` built from the arguments,
+/// - `nexum_platform::init(&config)`, whose `DeepLinkHandle` is bound to
 ///   the variable `_nexum_handle` (leading underscore keeps the binding
 ///   warning-free when the body does not use it).
 ///
