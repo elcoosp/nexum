@@ -5,7 +5,7 @@
 //! * [`setup`] returns a [`DeepLinkHandle`] for manual (blocking or async)
 //!   consumption — always available.
 //! * [`signal`] bridges deep links into a Floem
-//!   [`ReadSignal<Option<String>>`] — available with the `signal` feature.
+//!   `ReadSignal<Option<String>>` — available with the `signal` feature.
 //!
 //! # Example (signal feature)
 //!
@@ -40,7 +40,7 @@ pub use nexum_platform as platform;
 /// # Errors
 ///
 /// Returns the platform registration errors of
-/// [`nexum_platform::init`](nexum_platform::init), including
+/// [`nexum_platform::init`], including
 /// [`Error::HubAlreadySet`] when deep links were initialized twice.
 pub fn setup(config: &Config) -> Result<DeepLinkHandle> {
     nexum_platform::init(config)
@@ -137,6 +137,10 @@ mod tests {
 
     /// The single test touching the process-global hub: `signal` boots it
     /// through `setup` → `nexum_platform::init`.
+    #[cfg_attr(
+        not(target_os = "linux"),
+        ignore = "platform registration is exercised on Linux"
+    )]
     #[test]
     fn signal_boots_registration_and_creates_a_signal() {
         let tmp = tempfile::tempdir().expect("tempdir");
