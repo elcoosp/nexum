@@ -49,7 +49,7 @@ pub mod plist;
 pub mod mobile;
 
 /// macOS only: validates that the bundle's `Info.plist` declares every
-/// configured scheme. See [`nexum_platform::plist::missing_schemes`] for
+/// configured scheme. See [`crate::plist::missing_schemes`] for
 /// the cross-platform core of the check.
 #[cfg(target_os = "macos")]
 pub use macos::validate_bundle;
@@ -133,6 +133,7 @@ pub fn register(config: &Config) -> Result<()> {
 
 /// Scans command-line arguments for URLs matching the configured schemes
 /// and pushes each one into the global hub as a cold-start event.
+#[cfg(not(target_os = "macos"))]
 fn relay_cold_start_urls<I>(config: &Config, args: I) -> Result<()>
 where
     I: IntoIterator,
@@ -181,7 +182,7 @@ pub fn init_with(config: &Config, hub: DeepLinkHub) -> Result<DeepLinkHandle> {
     Ok(handle)
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "linux"))]
 mod integration {
     use std::path::Path;
 
@@ -342,7 +343,7 @@ mod integration {
             expect_primary(single_instance::acquire_in(&si_dir, config, &[]).expect("re-acquire"));
 
         // A stale socket file (previous instance crashed without cleanup)
-        // is reported instead of mis-reported as "another instance".
+        // is reported instead of wrongly reported as "another instance".
         #[cfg(unix)]
         {
             use std::os::unix::net::UnixListener;
