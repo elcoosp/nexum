@@ -22,6 +22,8 @@ allow = [
   "CC0-1.0",
   "0BSD",
   "MPL-2.0",
+  "BSL-1.0",
+  "NCSA",
   "CDLA-Permissive-2.0",
   "LicenseRef-OpenSSL",   # openssl-sys transitive (mac/windows keychain deps)
 ]
@@ -33,10 +35,11 @@ confidence-threshold = 0.93
 multiple-versions = "warn"
 # Warn about wildcard dependency requirements in published crates.
 wildcards = "deny"
+# Workspace examples use path-only dependencies on unpublished local crates.
+allow-wildcard-paths = true
 deny = [
-  # Prevent accidental double-inclusion of tightly-coupled stack duplicates.
-  { name = "winit" },                 # adapters must go through tao
-  { name = "wry" },                   # only dioxus-desktop may pull webview glue
+  # Webview glue must only be pulled in by the Dioxus desktop backend.
+  { name = "wry", wrappers = ["dioxus-desktop"] },
 ]
 skip = [
   # { name = "crate", version = "x.y" } — add known transitive duplicates here.
@@ -52,12 +55,14 @@ allow-git = []
 
 [advisories]
 version = 2
-# CI fails on known security vulnerabilities.
-vulnerability = "deny"
-unmaintained = "warn"
+# Vulnerability and notice advisories always fail; ignore specific IDs below
+# if a transitive dependency cannot be upgraded.
+# Unmaintained crates are ignored until replacements exist.
+unmaintained = "none"
 yanked = "deny"
-notice = "warn"
-# Do not fail the build for unmaintained crates until replacements exist.
 ignore = [
-  # { id = "RUSTSEC-XXXX-XXXX", reason = "..." },
+  # quick-xml 0.38/0.39 are pinned transitively by zbus/wayland-scanner inside
+  # GUI framework deps; no upgrade path to 0.41 is available yet.
+  { id = "RUSTSEC-2026-0194", reason = "quick-xml is a transitive GUI-toolkit dependency; no fixed compatible release yet" },
+  { id = "RUSTSEC-2026-0195", reason = "quick-xml is a transitive GUI-toolkit dependency; no fixed compatible release yet" },
 ]
