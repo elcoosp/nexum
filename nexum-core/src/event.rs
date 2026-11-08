@@ -38,8 +38,8 @@ impl DeepLinkEvent {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::MalformedUrl`] when the payload is not a valid
-    /// absolute URL.
+    /// Returns [`Error::MalformedUrl`](crate::Error::MalformedUrl) when the
+    /// payload is not a valid absolute URL.
     pub fn parse_url(&self) -> crate::Result<url::Url> {
         url::Url::parse(&self.url)
             .map_err(|error| crate::Error::MalformedUrl(self.url.clone(), error))
