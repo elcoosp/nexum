@@ -7,15 +7,15 @@
 //! generators below emit the exact declarations for the configured
 //! schemes:
 //!
-//! * [`android_manifest_intent_filter`] — the `<intent-filter>` block to
+//! * `android_manifest_intent_filter` — the `<intent-filter>` block to
 //!   paste into the `<activity>` of `AndroidManifest.xml`.
-//! * [`nexum_platform::plist::url_types_xml`] — the `CFBundleURLTypes`
-//!   block for `Info.plist` (iOS and macOS).
+//! * [`url_types_xml`](crate::plist::url_types_xml) — the
+//!   `CFBundleURLTypes` block for `Info.plist` (iOS and macOS).
 //!
 //! At *runtime* the UI framework (or the platform glue of the app) receives
-//! the incoming URL and hands it to nexum through [`push_intent_url`]
+//! the incoming URL and hands it to nexum through `push_intent_url`
 //! (Android: `Intent.getDataString()` from `onNewIntent` / `onCreate`) or
-//! [`push_open_urls`] (iOS: `openURLContexts` / `openURL` application
+//! `push_open_urls` (iOS: `openURLContexts` / `openURL` application
 //! delegate callbacks). The URLs then flow through the regular hub, so
 //! adapters and consumers work identically on mobile.
 
