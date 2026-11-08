@@ -27,7 +27,7 @@ pub enum Error {
     #[error("the deep-link channel has been shut down")]
     HubClosed,
 
-    /// A [bounded](nexum_core::DeepLinkHub::bounded) hub queue is full and
+    /// A [bounded](crate::DeepLinkHub::bounded) hub queue is full and
     /// the push was non-blocking.
     #[error("the bounded deep-link queue is full")]
     QueueFull,
