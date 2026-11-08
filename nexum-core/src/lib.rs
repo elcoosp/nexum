@@ -8,7 +8,7 @@
 //!   validated against RFC 3986 rules.
 //! * [`DeepLinkHub`] — the producer side: platform code and integrations push
 //!   URLs into it.
-//! * [`DeepLinkHandle`] — the consumer side: blocking, async and [`Stream`]
+//! * [`DeepLinkHandle`] — the consumer side: blocking, async and `Stream`
 //!   (behind the `stream` feature) access to incoming [`DeepLinkEvent`]s.
 //! * [`Error`] — the single error type shared by the whole nexum stack.
 //!
