@@ -45,7 +45,7 @@ pub use nexum_platform as platform;
 /// # Errors
 ///
 /// Returns the platform registration errors of
-/// [`nexum_platform::init`](nexum_platform::init), including
+/// [`nexum_platform::init`], including
 /// [`Error::HubAlreadySet`] when deep links were initialized twice.
 pub fn setup(config: &Config) -> Result<DeepLinkHandle> {
     nexum_platform::init(config)
@@ -135,6 +135,10 @@ mod tests {
     /// global-dependent step therefore runs inside this one function, in a
     /// fixed order, on a tokio `LocalSet` (which is what `spawn_local`
     /// requires on native targets).
+    #[cfg_attr(
+        not(target_os = "linux"),
+        ignore = "platform registration is exercised on Linux"
+    )]
     #[test]
     fn signal_bridge_boots_registration_and_delivers_urls() {
         let _guard = isolate_registration();
