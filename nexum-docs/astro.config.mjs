@@ -1,69 +1,50 @@
-import { defineConfig } from 'astro/config';
-import starlight from '@astrojs/starlight';
-import astroTakumi from 'astro-takumi';
-import fs from 'node:fs';
-import { makeRender } from './src/og-render.mjs';
+import { defineDocsConfig } from '@elcoosp/docs-toolkit/config';
 import starlightLinksValidator from 'starlight-links-validator';
 import starlightImageZoom from 'starlight-image-zoom';
 import starlightHeadingBadges from 'starlight-heading-badges';
 
-const __logoB64 = fs.readFileSync("./src/assets/logo.png").toString("base64");
-const __render = makeRender({
-  logoDataUrl: "data:image/png;base64," + __logoB64,
-  accentHex: "#26408c",
-  accentHexA12: "#26408c1a",
-  domain: "nexum.vercel.app",
-  projectName: "Nexum",
-});
 
-export default defineConfig({
-	vite: {
-		ssr: { external: ["jsdom", "astro-takumi"] },
-	},
-        // Deploy-specific: update `site` when the documentation moves to its final
-        // origin (see docs/decisions/0007-site-url.md). Required by Starlight 0.42's
-        // built-in sitemap; `base` is deliberately left unset (root deployment).
-        site: 'https://nexum.vercel.app',
-        integrations: [
-                starlight({
-			routeMiddleware: "./src/routeData.ts",
+export default await defineDocsConfig({
+  site: 'https://nexum.vercel.app',
+  domain: 'nexum.vercel.app',
+  title: "Nexum",
+  description: "Framework-agnostic deep linking for Rust — one unified API for custom URL schemes and deep-link events across Windows, macOS, Linux, Android and iOS.",
+  sidebar: [],
+  extraStarlight: {
                         expressiveCode: {
-                        	themes: ['github-light', 'github-dark'],
+                        	themes: ['github-light', 'github-dark']
                         },
                         plugins: [starlightLinksValidator(), starlightImageZoom(), starlightHeadingBadges()],
                         title: 'Nexum',
                         description:
                                 'Framework-agnostic deep linking for Rust — one unified API for custom URL schemes and deep-link events across Windows, macOS, Linux, Android and iOS.',
-
-                        logo: { src: './src/assets/logo.png', replacesTitle: false },
                         favicon: '/favicon.png',
                         head: [
                                 { tag: 'link', attrs: { rel: 'icon', type: 'image/png', href: '/favicon.png' } },
                                 { tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' } },
                         ],
-                        customCss: ['./src/styles/custom.css'],
                         social: [
                                 {
                                         icon: 'github',
                                         label: 'GitHub',
-                                        href: 'https://github.com/elcoosp/nexum',
+                                        href: 'https://github.com/elcoosp/nexum'
                                 },
                         ],
                         editLink: {
-                                baseUrl: 'https://github.com/elcoosp/nexum/edit/main/docs-site/src/content/docs/',
+                                baseUrl: 'https://github.com/elcoosp/nexum/edit/main/docs-site/src/content/docs/'
                         },
                         defaultLocale: 'root',
                         locales: {
                                 root: {
                                         label: 'English',
-                                        lang: 'en',
-                                },
+                                        lang: 'en'
+                                }
                         },
                         sidebar: [
                                 { label: 'Overview', link: '/' },
                                 {
                                         label: 'Tutorials',
-                                        items: [{ slug: 'tutorials/getting-started' }],
+                                        items: [{ slug: 'tutorials/getting-started' }]
                                 },
                                 {
                                         label: 'How-to Guides',
@@ -77,7 +58,7 @@ export default defineConfig({
                                                 { slug: 'guides/bounded-hub' },
                                                 { slug: 'guides/async-consumption' },
                                                 { slug: 'guides/mobile-deep-links' },
-                                        ],
+                                        ]
                                 },
                                 {
                                         label: 'Reference',
@@ -92,7 +73,7 @@ export default defineConfig({
                                                 { slug: 'reference/adapters/dioxus' },
                                                 { slug: 'reference/adapters/leptos' },
                                                 { slug: 'reference/adapters/gpui' },
-                                        ],
+                                        ]
                                 },
                                 {
                                         label: 'Explanation',
@@ -100,20 +81,8 @@ export default defineConfig({
                                                 { slug: 'explanation/architecture' },
                                                 { slug: 'explanation/event-sources' },
                                                 { slug: 'explanation/design-principles' },
-                                        ],
+                                        ]
                                 },
-                        ],
-                }),
-        
-		astroTakumi({
-			options: {
-				domBackend: "linkedom",
-				fonts: [fs.readFileSync("./node_modules/@fontsource/roboto/files/roboto-latin-400-normal.woff2")],
-				width: 1200,
-				height: 630,
-				format: "png",
-			},
-			render: __render,
-		}),
-	],
+                        ]
+                },
 });
