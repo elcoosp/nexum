@@ -4,7 +4,7 @@ description: Floem adapter — setup, the signal bridge, feature flags and threa
 type: reference
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 `nexum-floem` integrates deep links into Floem's reactive runtime. It re-exports the core types (`Config`, `DeepLinkHandle`, `DeepLinkEvent`, `Source`, `Error`, `Result`, …) and the whole `platform` module alias, so adapter and primitives share one import.
 
@@ -19,19 +19,18 @@ import { LinkCard } from '@astrojs/starlight/components';
 
 `signal(&config)` performs registration (**panicking** on failure), then spawns a background thread named `nexum-floem` that blocks on `recv_blocking` and forwards each URL into a one-slot crossbeam mailbox. The mailbox is connected to Floem's runtime with `create_signal_from_channel`, so the UI thread wakes only when a URL arrives. The returned signal starts as `None` and holds the most recent URL.
 
-```rust
-use floem::prelude::*;
+<Code lang="rust" code={`use floem::prelude::*;
 use nexum_floem::{Config, signal};
 
 let config = Config::builder().scheme("myapp").build().expect("valid config");
 let url_signal = signal(&config); // ReadSignal<Option<String>>
 
 // in a view:
-label(move || url_signal.get().unwrap_or_else(|| "No deep link received".into()))
-```
+label(move || url_signal.get().unwrap_or_else(|| "No deep link received".into()))`} />
 
-> [!CAUTION]
-> `signal` is `#[must_use]` and panics on registration failure (`nexum-floem: deep-link registration failed`). For fallible control, call `setup` and wire the returned `DeepLinkHandle` through your own channel; the signal feature is a convenience, not a requirement.
+<Aside type="danger">
+`signal` is `#[must_use]` and panics on registration failure (`nexum-floem: deep-link registration failed`). For fallible control, call `setup` and wire the returned `DeepLinkHandle` through your own channel; the signal feature is a convenience, not a requirement.
+</Aside>
 
 ## Feature flags
 

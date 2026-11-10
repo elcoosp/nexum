@@ -4,7 +4,7 @@ description: The engineering decisions behind nexum — String-only events, an e
 type: explanation
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Aside, LinkCard } from '@astrojs/starlight/components';
 
 Nexum's public surface looks small because several deliberate decisions keep it small. This page records the reasoning so the choices — and their trade-offs — are legible to contributors and reviewers.
 
@@ -43,8 +43,9 @@ The coverage policy is unusual and intentional: logic crates (core, platform, fl
 
 The workspace releases as one version (currently **0.3.0**, MSRV 1.85, edition 2024, dual-licensed MIT OR Apache-2.0). Changelogs are generated from Conventional Commits with git-cliff at tag time, and crates publish in dependency order — core, platform, adapters, macros, then the facade. `nexum-gpui` is the deliberate exception: because it tracks Zed's `main` branch through a git dependency, it cannot publish to crates.io and is consumed directly from the repository.
 
-> [!TIP]
-> Design rationales in the repository live in docs/BRAINSTORM.md (decision ledger) and docs/COVERAGE.md (the coverage strategy) — this page summarizes the parts that shape the public API.
+<Aside type="tip">
+Design rationales in the repository live in docs/BRAINSTORM.md (decision ledger) and docs/COVERAGE.md (the coverage strategy) — this page summarizes the parts that shape the public API.
+</Aside>
 
 - <LinkCard title="Architecture explained" href="/explanation/architecture/" description="The layering these principles produce." />
 - <LinkCard title="Error reference" href="/reference/errors/" description="How the decisions surface in the error model." />

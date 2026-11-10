@@ -4,50 +4,42 @@ description: Pick the right crate combination for your application — facade, c
 type: how-to
 ---
 
-import { LinkCard, TabItem, Tabs } from '@astrojs/starlight/components';
+import { Code, LinkCard, TabItem, Tabs } from '@astrojs/starlight/components';
 
 Every nexum crate publishes from the same workspace at the same version, so you install one of three shapes: the **facade** for the one-dependency experience, **core plus platform** when you want explicit control without the macro, or a **framework adapter** to receive events through your UI framework's own reactive types.
 
 <Tabs>
     <TabItem label="Facade (recommended)">
-        ```toml
-        [dependencies]
-        nexum = "0.3"
-        ```
+<Code lang="toml" code={`[dependencies]
+nexum = "0.3"`} />
 
         The facade re-exports `Config`, `DeepLinkHub`, `DeepLinkHandle`, the `#[deep_link]` attribute and the whole `platform` module. Use it for desktop apps that want the shortest path from dependency to working deep links.
     </TabItem>
     <TabItem label="Core + platform">
-        ```toml
-        [dependencies]
-        nexum-core = "0.3"
-        nexum-platform = "0.3"
-        ```
+<Code lang="toml" code={`[dependencies]
+nexum-core = "0.3"
+nexum-platform = "0.3"`} />
 
         Use this shape when you do not want an attribute macro in your build, or when you wire registration yourself — for example inside an existing bootstrap function with custom error handling around `nexum_platform::init`.
     </TabItem>
     <TabItem label="Framework adapter">
-        ```toml
-        [dependencies]
-        # Floem — the `signal` feature pulls in floem itself
-        nexum-floem = { version = "0.3", features = ["signal"] }
+<Code lang="toml" code={`[dependencies]
+# Floem — the \`signal\` feature pulls in floem itself
+nexum-floem = { version = "0.3", features = ["signal"] }
 
-        # Xilem
-        nexum-xilem = "0.3"
+# Xilem
+nexum-xilem = "0.3"
 
-        # Dioxus (desktop)
-        nexum-dioxus = "0.3"
+# Dioxus (desktop)
+nexum-dioxus = "0.3"
 
-        # Leptos — the `signal` feature pulls in leptos' reactive core
-        nexum-leptos = { version = "0.3", features = ["signal"] }
-        ```
+# Leptos — the \`signal\` feature pulls in leptos' reactive core
+nexum-leptos = { version = "0.3", features = ["signal"] }`} />
 
         `nexum-gpui` is not published to crates.io because it tracks Zed's `main` branch through a git dependency. Depend on it directly from the repository:
 
-        ```toml
-        [dependencies]
-        nexum-gpui = { git = "https://github.com/elcoosp/nexum" }
-        ```
+<Code lang="toml" code={`[dependencies]
+nexum-gpui = { git = "https://github.com/elcoosp/nexum" }`} />
     </TabItem>
 </Tabs>
 

@@ -4,7 +4,7 @@ description: Why DeepLinkEvent carries a Source, what System and CommandLine act
 type: explanation
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Aside, LinkCard } from '@astrojs/starlight/components';
 
 Every `DeepLinkEvent` carries a `source` field with exactly two possible values: `Source::System` and `Source::CommandLine`. The distinction is useful once you know what each value *operationally* means — and where the naming is approximate.
 
@@ -31,8 +31,9 @@ On macOS, warm-runtime URLs arrive as `GURL` Apple events — but nexum's delega
 - Do not use `Source` on macOS to distinguish cold start from warm activation.
 - Do use it portably to distinguish "the OS handed me a URL" (`CommandLine` on macOS) from "a peer process or mobile glue handed me a URL" (`System` — including single-instance hand-offs, which forward as `System`).
 
-> [!CAUTION]
-> Future versions may refine the macOS labeling. If you need a hard guarantee on macOS today, test the behavior in your integration tests rather than relying on the variant name.
+<Aside type="danger">
+Future versions may refine the macOS labeling. If you need a hard guarantee on macOS today, test the behavior in your integration tests rather than relying on the variant name.
+</Aside>
 
 ## Why sources are plain strings underneath
 

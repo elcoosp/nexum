@@ -4,7 +4,7 @@ description: Xilem adapter — setup, the with_deep_links view wrapper and messa
 type: reference
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 `nexum-xilem` routes deep-link events into Xilem's view tree through a task-based relay. It re-exports the core types and the `platform` module alias like every adapter.
 
@@ -20,16 +20,14 @@ import { LinkCard } from '@astrojs/starlight/components';
 
 ## Usage
 
-```rust
-nexum_xilem::setup(&config).expect("deep-link setup");
+<Code lang="rust" code={`nexum_xilem::setup(&config).expect("deep-link setup");
 
 fn app_logic(state: &mut AppState) -> impl WidgetView<AppState> + use<> {
     let content = /* your normal view */;
     with_deep_links(content, |state: &mut AppState, url| {
-        state.last_url = Some(url);
+                    state.last_url = Some(url);
     })
-}
-```
+}`} />
 
 ## How delivery works
 
@@ -39,8 +37,9 @@ fn app_logic(state: &mut AppState) -> impl WidgetView<AppState> + use<> {
 - The relay ends silently when the view tree or driver goes away (the proxy reports a send error), so teardown is automatic.
 - Calling `handle()` or `with_deep_links` before `setup` panics with `nexum_xilem::setup must be called before consuming deep links` — a deliberate programming-error signal.
 
-> [!TIP]
-> Because `setup` is fallible and `with_deep_links` is not, call `setup` in `main` before constructing the `Xilem` driver, then treat the rest of the integration as infallible.
+<Aside type="tip">
+Because `setup` is fallible and `with_deep_links` is not, call `setup` in `main` before constructing the `Xilem` driver, then treat the rest of the integration as infallible.
+</Aside>
 
 ## Next steps
 

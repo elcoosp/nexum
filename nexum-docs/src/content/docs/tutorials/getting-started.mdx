@@ -4,7 +4,7 @@ description: Walk through creating a small Rust app that registers a custom URL 
 type: tutorial
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 In this tutorial you build a complete Rust program that owns the `myapp://` URL scheme. You register the scheme with your operating system, launch the app, open a `myapp://` URL from a terminal or browser, and watch the URL arrive inside your process. Along the way you meet the three pieces every nexum app uses: a `Config`, OS registration, and a `DeepLinkHandle`.
 
@@ -18,55 +18,46 @@ In this tutorial you build a complete Rust program that owns the `myapp://` URL 
 
 Create a new binary crate and change into it:
 
-```bash
-cargo new nexum-demo
-cd nexum-demo
-```
+<Code lang="bash" code={`cargo new nexum-demo
+cd nexum-demo`} />
 
 ## Step 2 — Add the nexum facade
 
 The `nexum` facade is the one-dependency path: it re-exports `Config`, the platform layer, and the `#[deep_link]` attribute.
 
-```bash
-cargo add nexum
-```
+<Code lang="bash" code={`cargo add nexum`} />
 
 Your `Cargo.toml` gains:
 
-```toml
-[dependencies]
-nexum = "0.3"
-```
+<Code lang="toml" code={`[dependencies]
+nexum = "0.3"`} />
 
 ## Step 3 — Write the bootstrap
 
 Replace the contents of `src/main.rs` with:
 
-```rust
-use nexum::deep_link;
+<Code lang="rust" code={`use nexum::deep_link;
 
 #[deep_link(schemes = ["myapp"])]
 fn main() {
     // Registration happens before this body runs; the consumer
-    // handle is bound to `_nexum_handle`.
+    // handle is bound to \`_nexum_handle\`.
     if let Ok(url) = _nexum_handle.recv_blocking() {
-        println!("opened {url}");
+                    println!("opened {url}");
     }
-}
-```
+}`} />
 
 The `#[deep_link]` attribute rewrites your `main` so that nexum builds a validated `Config` and calls `nexum::platform::init` *before* your first statement executes. The returned `DeepLinkHandle` is bound to the generated `_nexum_handle` binding, which you then use to receive URLs.
 
-> [!CAUTION]
-> The generated code panics if the configuration is invalid or the OS registration fails. For fallible control — for example, to show an error dialog — use `nexum::platform::init` directly instead of the attribute.
+<Aside type="danger">
+The generated code panics if the configuration is invalid or the OS registration fails. For fallible control — for example, to show an error dialog — use `nexum::platform::init` directly instead of the attribute.
+</Aside>
 
 ## Step 4 — Run the app
 
 Start the program and leave it running:
 
-```bash
-cargo run
-```
+<Code lang="bash" code={`cargo run`} />
 
 On first run, nexum registers `myapp://` for your user:
 
@@ -78,16 +69,14 @@ On first run, nexum registers `myapp://` for your user:
 
 With the app still running, open a `myapp://` URL from another terminal:
 
-```bash
-# macOS
+<Code lang="bash" code={`# macOS
 open "myapp://open/settings"
 
 # Linux
 xdg-open "myapp://open/settings"
 
 # Windows (PowerShell)
-Start-Process "myapp://open/settings"
-```
+Start-Process "myapp://open/settings"`} />
 
 The operating system looks up the handler and launches — or, on Windows and Linux, re-launches — the registered executable with the URL. Nexum detects the URL among the process arguments and relays it into your app.
 
@@ -100,8 +89,9 @@ Where the output appears depends on your platform:
 
 You now have a Rust program that owns a URL scheme end to end: the OS launches it for `myapp://` URLs, nexum extracts the URL from the launch context, and `recv_blocking()` hands it to your code as a `String`.
 
-> [!TIP]
-> Every event is a `DeepLinkEvent` with a `url` and a `source`. Call `recv_event_blocking()` instead of `recv_blocking()` to see where an event came from — runtime hand-offs and command-line cold starts are distinguishable via `Source`.
+<Aside type="tip">
+Every event is a `DeepLinkEvent` with a `url` and a `source`. Call `recv_event_blocking()` instead of `recv_blocking()` to see where an event came from — runtime hand-offs and command-line cold starts are distinguishable via `Source`.
+</Aside>
 
 ## Next steps
 

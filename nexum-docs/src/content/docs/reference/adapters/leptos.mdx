@@ -4,7 +4,7 @@ description: Leptos adapter — setup, reactive signals, browser-safe operation 
 type: reference
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 `nexum-leptos` bridges deep links into Leptos' reactive system, and unlike the desktop adapters it type-checks for the browser: `wasm32-unknown-unknown` is a supported target, with the registration step factored so browser builds can run without touching the OS. The adapter raises its own MSRV to **1.88** to match the leptos 0.9 line (it tracks the 0.9 release candidate with `default-features = false`, pulling only the reactive core).
 
@@ -21,9 +21,7 @@ Everything downstream is ordinary reactive code: `signal_from_handle` creates `R
 
 ## Native usage
 
-```rust
-let url_signal = nexum_leptos::signal(&config); // RwSignal<Option<String>>
-```
+<Code lang="rust" code={`let url_signal = nexum_leptos::signal(&config); // RwSignal<Option<String>>`} />
 
 `signal` calls `setup` internally and expects registration to succeed (`nexum-leptos: deep-link registration failed` on failure). The returned `RwSignal` starts as `None` and is replaced by each URL.
 
@@ -31,11 +29,9 @@ let url_signal = nexum_leptos::signal(&config); // RwSignal<Option<String>>
 
 A browser cannot register URL schemes, so invert the flow: own a hub yourself, expose deep-link URLs to it (for example from a `?url=` query parameter or a test harness), and derive the signal from the handle:
 
-```rust
-let hub = DeepLinkHub::new();
+<Code lang="rust" code={`let hub = DeepLinkHub::new();
 let url_signal = signal_from_handle(&hub.handle()); // no OS access
-hub.push_url("myapp://demo/open");
-```
+hub.push_url("myapp://demo/open");`} />
 
 `signal_from_handle` spawns the relay with `spawn_local`, which requires an initialized async executor — Leptos sets one up in `mount_to_body` on web (and SSR runtimes do the same server-side). The adapter's own tests drive the identical bridge headlessly on a tokio `LocalSet`, so wasm behavior is covered without a browser.
 
@@ -47,8 +43,9 @@ hub.push_url("myapp://demo/open");
 
 Without the feature you get `setup` and the raw `DeepLinkHandle` — enough to wire any consumption pattern yourself.
 
-> [!CAUTION]
-> Require Rust 1.88 or newer when using this adapter (the workspace baseline of 1.85 does not apply here). CI type-checks `nexum-leptos` and the leptos example for `wasm32-unknown-unknown`.
+<Aside type="danger">
+Require Rust 1.88 or newer when using this adapter (the workspace baseline of 1.85 does not apply here). CI type-checks `nexum-leptos` and the leptos example for `wasm32-unknown-unknown`.
+</Aside>
 
 ## Next steps
 

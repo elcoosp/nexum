@@ -1,0 +1,29 @@
+# nexum
+
+> AI-agent index.
+
+- [Page Not Found](/404/) — The page you requested does not exist — jump back to the tutorial, guides or reference from here.
+- [Architecture Explained](/explanation/architecture/) — How the nexum workspace is layered, how events flow from the operating system to your code, and where each crate sits in the picture.
+- [Design Principles](/explanation/design-principles/) — The engineering decisions behind nexum — String-only events, an executor-agnostic transport, safety guarantees, and the quality bar.
+- [Event Sources Explained](/explanation/event-sources/) — Why DeepLinkEvent carries a Source, what System and CommandLine actually mean per platform, and the macOS labeling nuance.
+- [Consume Deep Links Asynchronously](/guides/async-consumption/) — Use async receive methods, the stream feature, and polling APIs to fit deep-link events into any executor or runtime.
+- [Use a Bounded Hub](/guides/bounded-hub/) — Apply backpressure to deep-link events with DeepLinkHub::bounded and handle QueueFull errors deliberately.
+- [Choosing an Adapter](/guides/choosing-an-adapter/) — Compare nexum's five UI-framework adapters and pick the one that matches your application's reactive model.
+- [Install Nexum](/guides/installation/) — Pick the right crate combination for your application — facade, core plus platform, or a framework adapter — and declare the matching feature flags.
+- [Set Up Deep Links on Linux](/guides/linux-setup/) — Learn how nexum writes a .desktop entry, binds schemes with xdg-mime, and where to look when registration fails.
+- [Set Up Deep Links on macOS](/guides/macos-setup/) — Declare your URL schemes in Info.plist, validate the bundle at runtime, and understand how nexum receives GURL Apple Events.
+- [Handle Mobile Deep Links](/guides/mobile-deep-links/) — Generate Android intent filters and iOS URL types, and feed runtime URLs from framework glue into the nexum hub.
+- [Single-Instance Hand-Off](/guides/single-instance/) — Forward deep links from a second app instance into the running one with nexum's single-instance feature.
+- [Set Up Deep Links on Windows](/guides/windows-setup/) — Understand the per-user registry keys nexum writes for your URL schemes and how command-line cold starts deliver URLs.
+- [Nexum](/) — Framework-agnostic deep linking for Rust — register custom URL schemes and receive deep-link events with one unified API.
+- [nexum-dioxus Reference](/reference/adapters/dioxus/) — Dioxus desktop adapter — launch_desktop, the use_deep_link hook and the tao Opened-event bridge.
+- [nexum-floem Reference](/reference/adapters/floem/) — Floem adapter — setup, the signal bridge, feature flags and threading notes.
+- [nexum-gpui Reference](/reference/adapters/gpui/) — GPUI adapter — setup_deep_links, attach_deep_link and the callback-before-registration ordering.
+- [nexum-leptos Reference](/reference/adapters/leptos/) — Leptos adapter — setup, reactive signals, browser-safe operation under wasm32 and the raised MSRV.
+- [nexum-xilem Reference](/reference/adapters/xilem/) — Xilem adapter — setup, the with_deep_links view wrapper and message-relay behavior.
+- [nexum-core Reference](/reference/core/) — Config, ConfigBuilder, AppLink, DeepLinkHub, DeepLinkHandle, DeepLinkEvent, Source and DeepLinkStream — the framework-independent primitives.
+- [Error Reference](/reference/errors/) — Every variant of nexum_core::Error with its exact display message and the situations that produce it.
+- [The deep_link Attribute](/reference/macros/) — Syntax, accepted keys, generated code and constraints of the nexum-macros bootstrap attribute.
+- [nexum (Facade)](/reference/nexum/) — The one-dependency facade — re-exports of core primitives, the platform module and the deep_link bootstrap attribute.
+- [nexum-platform Reference](/reference/platform/) — OS registration, the process-global hub, plist validation, mobile intake and single-instance hand-off — signatures and platform behavior.
+- [Build Your First Deep Link](/tutorials/getting-started/) — Walk through creating a small Rust app that registers a custom URL scheme and receives deep-link events with nexum.

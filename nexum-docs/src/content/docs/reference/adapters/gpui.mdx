@@ -4,14 +4,12 @@ description: GPUI adapter — setup_deep_links, attach_deep_link and the callbac
 type: reference
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 `nexum-gpui` integrates deep links into GPUI applications (Zed-style UIs). The crate is **not a workspace member** and is not published to crates.io: GPUI itself moves with Zed's `main` branch, so `nexum-gpui` tracks it through a git dependency and is verified separately. Depend on it directly from the repository:
 
-```toml
-[dependencies]
-nexum-gpui = { git = "https://github.com/elcoosp/nexum" }
-```
+<Code lang="toml" code={`[dependencies]
+nexum-gpui = { git = "https://github.com/elcoosp/nexum" }`} />
 
 ## API
 
@@ -28,19 +26,18 @@ Calling `setup_deep_links` a second time fails with `Error::HubAlreadySet` — t
 
 ## Receiving URLs in a view
 
-```rust
-let handle = setup_deep_links(&app, &config)?;
+<Code lang="rust" code={`let handle = setup_deep_links(&app, &config)?;
 
 // after opening a window and creating your view entity:
 attach_deep_link(handle, view.clone(), cx, |view, _cx, url| {
     view.set_url(url);
-});
-```
+});`} />
 
 `attach_deep_link` spawns a task on GPUI's executor and detaches it: for every received URL it updates the entity through `view.update(...)` and calls `cx.notify()` so GPUI re-renders. The task lives as long as the app or until the channel shuts down.
 
-> [!TIP]
-> The callback signature mirrors GPUI's own update closures — `(&mut V, &mut Context<V>, String)` — so state mutation and rendering invalidation follow the framework's normal rules.
+<Aside type="tip">
+The callback signature mirrors GPUI's own update closures — `(&mut V, &mut Context<V>, String)` — so state mutation and rendering invalidation follow the framework's normal rules.
+</Aside>
 
 ## Next steps
 

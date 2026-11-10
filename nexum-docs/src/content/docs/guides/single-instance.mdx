@@ -4,16 +4,14 @@ description: Forward deep links from a second app instance into the running one 
 type: how-to
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 On Windows and Linux a deep link usually launches a **second** instance of your app. The `single-instance` feature turns that launch into a hand-off: the second instance forwards its URLs to the original process over a local socket and exits, so only one copy of your app stays alive.
 
 ## Enable the feature
 
-```toml
-[dependencies]
-nexum = { version = "0.3", features = ["single-instance"] }
-```
+<Code lang="toml" code={`[dependencies]
+nexum = { version = "0.3", features = ["single-instance"] }`} />
 
 The module lives in the platform layer, so `nexum::platform::single_instance` is the entry point (or `nexum_platform::single_instance` if you depend on the platform crate directly).
 
@@ -21,28 +19,27 @@ The module lives in the platform layer, so `nexum::platform::single_instance` is
 
 Call `acquire` **after** the hub is initialized (`init`, `init_with` or `set_hub` — otherwise you get `Error::HubNotSet`), passing the URLs the current process should deliver:
 
-```rust
-use nexum::platform::single_instance::{acquire, Acquisition};
+<Code lang="rust" code={`use nexum::platform::single_instance::{acquire, Acquisition};
 
 let urls = config.extract_launch_urls(std::env::args().skip(1));
 
 match acquire(&config, &urls)? {
     Acquisition::Primary(_guard) => {
-        // This process owns the deep-link socket.
-        // Keep `_guard` alive for the whole app lifetime.
-        run_app();
+                    // This process owns the deep-link socket.
+                    // Keep \`_guard\` alive for the whole app lifetime.
+                    run_app();
     }
     Acquisition::HandedOff { forwarded } => {
-        // Another instance answered; `forwarded` URLs were
-        // delivered to it. Exit this process now.
+                    // Another instance answered; \`forwarded\` URLs were
+                    // delivered to it. Exit this process now.
     }
-}
-```
+}`} />
 
 Each forwarded URL arrives in the primary's hub as a normal `DeepLinkEvent` with `Source::System`, so consumers treat hand-offs exactly like OS-delivered links.
 
-> [!CAUTION]
-> Dropping the `PrimaryGuard` closes the socket immediately. Hold it in your app state for the process lifetime — the compiler annotates it `#[must_use]` for exactly this reason.
+<Aside type="danger">
+Dropping the `PrimaryGuard` closes the socket immediately. Hold it in your app state for the process lifetime — the compiler annotates it `#[must_use]` for exactly this reason.
+</Aside>
 
 ## Transport details
 

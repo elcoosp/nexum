@@ -4,7 +4,7 @@ description: Generate Android intent filters and iOS URL types, and feed runtime
 type: how-to
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 Mobile platforms have no API nexum can call to register a scheme — both Android and iOS declare schemes statically in app metadata. Nexum therefore ships **generators** for those declarations plus small intake functions your framework glue calls when the OS hands over a URL.
 
@@ -12,21 +12,17 @@ Mobile platforms have no API nexum can call to register a scheme — both Androi
 
 **Android** — `nexum_platform::mobile::android_manifest_intent_filter` renders a complete `<intent-filter>` (VIEW action, `DEFAULT` + `BROWSABLE` categories, one `<data android:scheme="...">` per configured scheme). Paste it into the activity in your `AndroidManifest.xml`:
 
-```rust
-let config = Config::builder().scheme("myapp").build().expect("valid config");
-let filter_xml = nexum_platform::mobile::android_manifest_intent_filter(&config);
-```
+<Code lang="rust" code={`let config = Config::builder().scheme("myapp").build().expect("valid config");
+let filter_xml = nexum_platform::mobile::android_manifest_intent_filter(&config);`} />
 
 Generated shape:
 
-```xml
-<intent-filter>
-    <action android:name="android.intent.action.VIEW" />
-    <category android:name="android.intent.category.DEFAULT" />
-    <category android:name="android.intent.category.BROWSABLE" />
-    <data android:scheme="myapp" />
-</intent-filter>
-```
+<Code lang="xml" code={`<intent-filter>
+ <action android:name="android.intent.action.VIEW" />
+ <category android:name="android.intent.category.DEFAULT" />
+ <category android:name="android.intent.category.BROWSABLE" />
+ <data android:scheme="myapp" />
+</intent-filter>`} />
 
 **iOS** — use `nexum_platform::plist::url_types_xml` to render the `CFBundleURLTypes` block for your app's `Info.plist`, exactly as on desktop macOS. `plist::missing_schemes` lets you verify the built plist against a `Config` in a test.
 
@@ -41,16 +37,15 @@ Initialize the global hub once at startup — for example by storing a hub with 
 
 Both push into the global hub as `Source::System` and return `Err(Error::HubNotSet)` if the hub was never initialized, so a wiring mistake fails loudly at first use:
 
-```rust
-// Android JNI glue (pseudo-call):
+<Code lang="rust" code={`// Android JNI glue (pseudo-call):
 nexum_platform::mobile::push_intent_url(intent_data_string)?;
 
 // iOS delegate (pseudo-call):
-nexum_platform::mobile::push_open_urls(url_strings)?;
-```
+nexum_platform::mobile::push_open_urls(url_strings)?;`} />
 
-> [!CAUTION]
-> The intake functions are target-gated: `push_intent_url` compiles only on `target_os = "android"` and `push_open_urls` only on `target_os = "ios"`. Gate your glue code with the same cfg attributes. CI type-checks the platform crate against real Android and iOS targets so this cannot silently rot.
+<Aside type="danger">
+The intake functions are target-gated: `push_intent_url` compiles only on `target_os = "android"` and `push_open_urls` only on `target_os = "ios"`. Gate your glue code with the same cfg attributes. CI type-checks the platform crate against real Android and iOS targets so this cannot silently rot.
+</Aside>
 
 ## Consumption stays unchanged
 

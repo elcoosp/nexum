@@ -4,7 +4,7 @@ description: Understand the per-user registry keys nexum writes for your URL sch
 type: how-to
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 On Windows, nexum registers each configured scheme under the **current user's** registry hive — no administrator rights are required. Registration happens inside `nexum::platform::register` (called by `init` or by the `#[deep_link]` bootstrap) using the path of the currently running executable.
 
@@ -21,13 +21,11 @@ For every scheme in your `Config`, nexum writes three registry values below `HKE
 
 The executable path comes from `std::env::current_exe()` at registration time, and the icon comes from `Config::icon_path` when you set one:
 
-```rust
-let config = Config::builder()
+<Code lang="rust" code={`let config = Config::builder()
     .scheme("myapp")
     .icon_path("C:/apps/icons/myapp.ico")
     .build()
-    .expect("valid config");
-```
+    .expect("valid config");`} />
 
 Because the `shell\open\command` template passes `"%1"` as an argument, the OS launches your executable with the URL as a command-line parameter for every deep link — both cold starts and warm invocations.
 
@@ -42,8 +40,9 @@ The result is a uniform flow:
 3. The new instance registers the scheme idempotently, extracts the URL from `argv`, and delivers a `DeepLinkEvent` with `url = "myapp://open/settings"` and `source = Source::CommandLine`.
 4. Without the single-instance feature, the second process consumes the URL itself; with it, the URL is forwarded to the original instance over loopback TCP and the second process exits.
 
-> [!TIP]
-> Scheme-only URLs such as `myapp:` are valid and are extracted too — `extract_launch_urls` accepts them by design.
+<Aside type="tip">
+Scheme-only URLs such as `myapp:` are valid and are extracted too — `extract_launch_urls` accepts them by design.
+</Aside>
 
 ## Next steps
 

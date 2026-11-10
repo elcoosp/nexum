@@ -1,0 +1,1602 @@
+---
+title: Page Not Found
+description: The page you requested does not exist — jump back to the tutorial, guides or reference from here.
+draft: true
+---
+
+We could not find the page you requested. The URL may be stale, or the page may have moved. Here are the fastest ways back on track:
+
+- New to nexum? Start with [the tutorial](/tutorials/getting-started/) — it takes you from an empty Cargo project to a received deep link in about ten minutes.
+- Solving a specific problem? Browse the [how-to guides](/guides/installation/) for installation, platform setup, single-instance hand-off and more.
+- Looking up an API? The [reference section](/reference/nexum/) documents every public crate with exact signatures.
+- Curious why nexum works the way it does? The [explanation section](/explanation/architecture/) covers architecture, event sources and design principles.
+
+If you followed a link from within this site that landed here, please [open an issue on GitHub](https://github.com/elcoosp/nexum/issues) so it can be fixed.
+
+
+---
+
+---
+title: Architecture Explained
+description: How the nexum workspace is layered, how events flow from the operating system to your code, and where each crate sits in the picture.
+type: explanation
+---
+
+import { Aside, Code, FileTree, LinkCard } from '@astrojs/starlight/components';
+
+Nexum solves one problem — getting a URL from the operating system into your Rust process — and it solves it by splitting the problem into layers with minimal dependencies between them. Understanding the layering explains almost every API decision you meet in the reference pages.
+
+## The workspace layout
+
+<Code lang="jsx" code={`<FileTree>
+- nexum/            (facade: re-exports + the deep_link attribute)
+- nexum-macros/     (proc-macro: #[deep_link] bootstrap)
+- nexum-core/       (Config, DeepLinkHub, DeepLinkHandle, DeepLinkEvent)
+- nexum-platform/   (OS registration, global hub, plist, mobile, single-instance)
+- nexum-floem/      (adapter: Floem)
+- nexum-xilem/      (adapter: Xilem)
+- nexum-dioxus/     (adapter: Dioxus desktop)
+- nexum-leptos/     (adapter: Leptos, wasm-capable)
+- nexum-gpui/       (adapter: GPUI — outside the workspace, tracks Zed)
+- examples/         (one runnable app per framework)
+</FileTree>`} />
+
+Only the bottom of the stack knows about operating systems. `nexum-core` compiles with `#![forbid(unsafe_code)]` and no platform code at all; `nexum-platform` contains the three cfg-gated desktop backends plus portable generators; the adapters contain nothing but bridge logic into their framework's event model.
+
+## The event pipeline
+
+Every deep link follows the same three hops:
+
+1. **Producer** — something pushes a URL into a `DeepLinkHub` as a `String`. The producer can be a platform relay (command-line arguments on Windows and Linux, the `GURL` Apple-event delegate on macOS), the mobile intake functions, a second instance handing off over a socket, or your own test code.
+2. **Queue** — the hub is an `async-channel` MPSC queue, unbounded by default and bounded on demand. Producers never need an executor; the queue is equally happy on a native thread pool, an async runtime, or wasm.
+3. **Consumer** — one or more `DeepLinkHandle`s receive `DeepLinkEvent`s. Delivery is *round-robin per event*: each URL goes to exactly one live consumer. Cloning a handle adds a consumer for load-sharing, not for broadcasting.
+
+The platform layer makes this concrete: `init` (or `init_with`) installs a hub as the **process-global** hub, runs `register`, and hands you a handle. From then on, `push_url` and `push_launch_url` — the functions the OS-bridging code calls — feed that global hub. Your application code never talks to the OS directly; it only touches the handle.
+
+## Where adapters fit
+
+An adapter is deliberately thin. Each one:
+
+- calls `nexum_platform::init` for you (exactly once — a second call fails with `HubAlreadySet`),
+- stores or wraps the returned `DeepLinkHandle`,
+- relays events into the framework's own reactivity: a Floem `ReadSignal`, a Xilem task, a Dioxus `Signal` fed by `use_future`, a Leptos `RwSignal` driven by `spawn_local`, or a GPUI entity update.
+
+Because the adapter side of the contract reduces to "poll a handle and forward strings", the same guarantees hold everywhere: URLs arrive as `String`s, sources are classified by `Source`, and backpressure or hand-off features slot in beneath any adapter.
+
+## The opt-in layers
+
+Two features extend the pipeline without changing it. **Bounded mode** (`DeepLinkHub::bounded(n)` installed via `init_with`) turns the queue into a backpressure point: producers block (native) or drop (wasm) when the consumer falls behind. **Single-instance hand-off** (`single-instance` feature) adds a local socket so a second launch forwards its command-line URLs into the primary's hub — the second process sees `HandedOff` and exits. Neither feature requires touching your consumption code; both operate entirely on the producer side of the pipeline.
+
+<Aside type="tip">
+The example apps in the repository are the executable version of this page: each `examples/*-basic` crate wires one adapter end to end, and the leptos example demonstrates the hub-owned browser variant.
+</Aside>
+
+- <LinkCard title="Core reference" href="/reference/core/" description="The hub, handle and event types in detail." />
+- <LinkCard title="Event sources explained" href="/explanation/event-sources/" description="How producers label the URLs they push." />
+
+
+---
+
+---
+title: Design Principles
+description: The engineering decisions behind nexum — String-only events, an executor-agnostic transport, safety guarantees, and the quality bar.
+type: explanation
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+Nexum's public surface looks small because several deliberate decisions keep it small. This page records the reasoning so the choices — and their trade-offs — are legible to contributors and reviewers.
+
+## Events are raw strings, parsed lazily
+
+The hub stores `String` URLs, and `DeepLinkEvent::parse_url` parses on demand. The alternative — parsing into `url::Url` at push time — would make every producer pay for validation, force `url`-crate types into the hot path, and turn a malformed URL into a producer-side panic or an error channel nobody asked for. With lazy parsing the push path is infallible and allocation-cheap, and the rare malformed URL becomes a normal `Some(Err(_))` item on `recv_url` instead of blocking the consumer.
+
+## One transport, any executor
+
+The queue is `async-channel`. That single choice yields: async receive methods that run on tokio, async-std, smol, GPUI's executor or a wasm event loop without adapter shims; blocking wrappers (`recv_blocking`) for native thread code; and wasm support where blocking is compiled out entirely. Adapters then bridge the handle into their framework's reactivity — signals, tasks, hooks — without nexum ever depending on a framework itself.
+
+## Safety and surface discipline
+
+- `nexum-core` is `#![forbid(unsafe_code)]`; unsafe exists only where the OS demands it (macOS Objective-C glue, single-instance test harnesses).
+- Every public item across the workspace carries a doc comment (`missing_docs` is enforced), and the workspace lints run clippy with `pedantic` — with zero allows.
+- Nothing is on by default: every crate ships `default = []`, so `cargo add` pulls only the platform layer you need. Features (`stream`, `single-instance`, `signal`) are pure opt-ins.
+- The macro panics loudly on misconfiguration rather than silently proceeding, while the fallible path (`platform::init`) stays available for applications that must recover.
+
+## The quality bar
+
+CI enforces the bar that the docs inherit from the code:
+
+| Check | Gate |
+| --- | --- |
+| Formatting and lints | `cargo fmt --check`, `clippy --workspace --all-targets --all-features -D warnings` |
+| Tests | 3-OS matrix, `--all-features` |
+| Coverage | 100 % line coverage on `nexum-core`, `nexum-platform`, `nexum-floem`, `nexum-leptos` via `cargo-llvm-cov --fail-under-lines 100` |
+| MSRV | `cargo check` on exactly 1.85 for the core crates; 1.88 for the leptos adapter |
+| Cross-target | macOS, Windows, Android, iOS backends type-checked on their real targets; wasm32 for core and leptos |
+| Docs | `cargo doc` with `-D warnings`; every public item documented |
+| Supply chain | Weekly `cargo-deny` and Dependabot updates |
+
+The coverage policy is unusual and intentional: logic crates (core, platform, floem, leptos) must keep every line tested — global state uses one serial integration test, the single-instance wire protocol is tested against in-memory streams, and each adapter's relay function is factored so it can be driven headlessly. Adapter crates whose value is mostly framework glue (xilem, dioxus, gpui, macros) are report-only by the same policy.
+
+## Versioning and releases
+
+The workspace releases as one version (currently **0.3.0**, MSRV 1.85, edition 2024, dual-licensed MIT OR Apache-2.0). Changelogs are generated from Conventional Commits with git-cliff at tag time, and crates publish in dependency order — core, platform, adapters, macros, then the facade. `nexum-gpui` is the deliberate exception: because it tracks Zed's `main` branch through a git dependency, it cannot publish to crates.io and is consumed directly from the repository.
+
+<Aside type="tip">
+Design rationales in the repository live in docs/BRAINSTORM.md (decision ledger) and docs/COVERAGE.md (the coverage strategy) — this page summarizes the parts that shape the public API.
+</Aside>
+
+- <LinkCard title="Architecture explained" href="/explanation/architecture/" description="The layering these principles produce." />
+- <LinkCard title="Error reference" href="/reference/errors/" description="How the decisions surface in the error model." />
+
+
+---
+
+---
+title: Event Sources Explained
+description: Why DeepLinkEvent carries a Source, what System and CommandLine actually mean per platform, and the macOS labeling nuance.
+type: explanation
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+Every `DeepLinkEvent` carries a `source` field with exactly two possible values: `Source::System` and `Source::CommandLine`. The distinction is useful once you know what each value *operationally* means — and where the naming is approximate.
+
+## The two sources
+
+| Source | Pushed by | Operational meaning |
+| --- | --- | --- |
+| `Source::System` | Windows registry hand-off relays, mobile intake (`push_intent_url`, `push_open_urls`), single-instance forwarding, `push_url` | A URL that materialized while your process was already the "live" handler — the OS or another process delivered it to you |
+| `Source::CommandLine` | Cold-start relay from `argv` (Windows, Linux), macOS `GURL` Apple events, `push_launch_url` | A URL that arrived with this process's own launch context or through the launch-event path |
+
+`Source` derives `Default` with `System` as the default variant, so `DeepLinkHub::push_url` (the plain URL push) produces `System`, while `push_launch_url` — "this URL comes from a launch" — produces `CommandLine`.
+
+## Cold start versus warm runtime
+
+The deepest reason the two-source model exists is that deep links reach you in two fundamentally different situations:
+
+- **Cold start** — the OS launches your process *for* a URL. On Windows and Linux the URL sits in `argv`, and `register` relays it through `Config::extract_launch_urls` with `push_launch_url`, so the very first event your consumer sees is `Source::CommandLine`.
+- **Warm runtime** — your app is already running when the user clicks a link. The OS must hand the URL to the live process: Apple Events on macOS, registry-protocol re-launch plus relay on Windows, `xdg-open` launching a new process on Linux, or framework callbacks (GPUI's `on_open_urls`, tao's `Opened`, mobile delegate methods).
+
+## The macOS nuance
+
+On macOS, warm-runtime URLs arrive as `GURL` Apple events — but nexum's delegate pushes them with `push_launch_url`, so the resulting events carry `Source::CommandLine`, not `Source::System`. The label reflects the *delivery mechanism* (an Apple event tied to the launch path) rather than the *situational* cold/warm split. Practical consequences:
+
+- Do not use `Source` on macOS to distinguish cold start from warm activation.
+- Do use it portably to distinguish "the OS handed me a URL" (`CommandLine` on macOS) from "a peer process or mobile glue handed me a URL" (`System` — including single-instance hand-offs, which forward as `System`).
+
+<Aside type="danger">
+Future versions may refine the macOS labeling. If you need a hard guarantee on macOS today, test the behavior in your integration tests rather than relying on the variant name.
+</Aside>
+
+## Why sources are plain strings underneath
+
+Events store the raw URL as a `String` and the source as a two-variant enum — deliberately minimal metadata. Anything richer (parsing into `url::Url`, extracting hosts and paths) is deferred to the consumer via `DeepLinkEvent::parse_url`, so producers stay allocation-cheap and the queue never blocks on parsing. See [design principles](/explanation/design-principles/) for the full rationale.
+
+- <LinkCard title="Core reference" href="/reference/core/" description="DeepLinkEvent and Source signatures." />
+- <LinkCard title="Single-instance hand-off" href="/guides/single-instance/" description="Forwarded URLs arrive as Source::System." />
+
+
+---
+
+---
+title: Consume Deep Links Asynchronously
+description: Use async receive methods, the stream feature, and polling APIs to fit deep-link events into any executor or runtime.
+type: how-to
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+`DeepLinkHandle` offers four consumption styles: blocking, async-await, polling, and (with the `stream` feature) a `Stream`. All async methods run on any executor because the transport underneath is `async-channel` — there is no tokio dependency and no runtime requirement.
+
+## Async await
+
+<Code lang="rust" code={`// native or wasm, any executor:
+while let Some(url) = handle.recv().await {
+    println!("received {url}");
+}`} />
+
+| Method | Signature shape | Notes |
+| --- | --- | --- |
+| `recv` | `async fn recv(&self) -> Option<String>` | `None` once the hub shuts down |
+| `recv_event` | `async fn recv_event(&self) -> Option<DeepLinkEvent>` | Includes the event `source` |
+| `recv_url` | `async fn recv_url(&self) -> Option<Result<url::Url>>` | Malformed URLs surface as `Some(Err(_))` instead of blocking the consumer |
+
+`recv_url` is the parse-on-receive variant: the hub stores raw `String`s, so parsing happens lazily on the consumer side and a bad URL never poisons the channel.
+
+## As a stream
+
+Enable the feature and convert the handle:
+
+<Code lang="toml" code={`[dependencies]
+nexum = { version = "0.3", features = ["stream"] }`} />
+
+<Code lang="rust" code={`use futures::StreamExt;
+
+let mut stream = handle.into_stream(); // Stream<Item = String>
+while let Some(url) = stream.next().await {
+    println!("received {url}");
+}`} />
+
+`DeepLinkStream` yields raw URL strings and terminates when the channel shuts down, so it composes with the usual stream adaptors — `filter_map`, `timeout`, `select` — from `futures` or tokio-stream.
+
+## Polling and batch draining
+
+For event-loop integrations that cannot await, the handle exposes non-blocking accessors:
+
+<Code lang="rust" code={`if let Some(url) = handle.try_recv() {
+    // one URL if available
+}
+let backlog = handle.drain(); // all currently queued URLs, in order`} />
+
+`try_recv` returns `None` both when the queue is empty *and* after shutdown — the two states are deliberately indistinguishable. Use `recv_event_blocking` when you need to tell them apart.
+
+## Platform notes
+
+- **wasm** — the blocking methods (`recv_blocking`, `recv_event_blocking`) are compiled out on wasm targets; the async and polling APIs are always available. On wasm a bounded hub *drops* instead of blocking on full pushes.
+- **Threaded adapters** — Floem's `signal()` helper is the reference pattern for bridging into a framework: a dedicated thread calls `recv_blocking` and forwards into the reactive runtime. Copy that shape when your framework has no adapter yet.
+
+<Aside type="tip">
+Cloning a `DeepLinkHandle` gives you another independent consumer; the hub delivers each event to exactly one consumer, round-robin across live receivers. That is load-sharing, not broadcasting — for fan-out, subscribe with multiple hubs or demultiplex yourself.
+</Aside>
+
+## Next steps
+
+- <LinkCard title="Core API reference" href="/reference/core/" description="Every DeepLinkHandle method signature in one table." />
+- <LinkCard title="Bounded hub" href="/guides/bounded-hub/" description="Backpressure semantics for producers." />
+
+
+---
+
+---
+title: Use a Bounded Hub
+description: Apply backpressure to deep-link events with DeepLinkHub::bounded and handle QueueFull errors deliberately.
+type: how-to
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+By default nexum's hub queue is unbounded: producers never block and events are never dropped. When your consumer might be slow — a UI thread under load, a network call in the pipeline — a **bounded** hub gives you explicit backpressure instead of unbounded memory growth.
+
+## Create and install a bounded hub
+
+Build the hub yourself and install it with `init_with`, which returns the consumer handle for it:
+
+<Code lang="rust" code={`use nexum::platform::init_with;
+use nexum_core::{Config, DeepLinkHub};
+
+let config = Config::builder().scheme("myapp").build().expect("valid config");
+
+let hub = DeepLinkHub::bounded(16);
+let handle = init_with(&config, hub).expect("deep-link init");`} />
+
+`init_with` installs the hub as the process-global hub and runs the usual OS registration, so everything downstream — platform relays, adapter bridges, `push_url` — feeds the bounded queue.
+
+## Push behavior
+
+| Method | When the queue is full (native) | On wasm |
+| --- | --- | --- |
+| `push_url`, `push_launch_url`, `push_event` | Blocks until a slot frees | Drops the event (non-blocking) |
+| `try_push_url`, `try_push_launch_url`, `try_push_event` | Returns `Err(Error::QueueFull)` immediately | Same |
+
+The capacity is clamped to at least one slot: `DeepLinkHub::bounded(0)` behaves like a one-slot queue. `hub.capacity()` reports the effective limit (`None` for unbounded hubs).
+
+The following behavior is verified by the crate's own tests:
+
+<Code lang="rust" code={`let hub = DeepLinkHub::bounded(2);
+let handle = hub.handle();
+
+hub.try_push_url("myapp://1").expect("room for 1");
+hub.try_push_launch_url("myapp://2").expect("room for 2");
+assert!(matches!(
+    hub.try_push_url("myapp://3"),
+    Err(nexum_core::Error::QueueFull)
+));
+
+// Draining one event makes room for exactly one more.
+handle.recv_event_blocking().expect("event");
+hub.try_push_url("myapp://3").expect("room again");`} />
+
+## Choosing a capacity
+
+Pick the bound from your consumer's worst-case drain interval: a UI adapter that wakes per event typically wants a small bound (8–32) so a frozen UI stops the producer quickly, while a batch worker that drains with `drain_events` can afford a larger one. Because producers *block* when full on native targets, an oversized bound only costs memory, whereas an undersized one adds backpressure you must observe in tests.
+
+<Aside type="tip">
+For fire-and-forget semantics on native targets keep the default unbounded hub; bounded mode exists to make overload *observable*, not to route around it.
+</Aside>
+
+## Next steps
+
+- <LinkCard title="Core API reference" href="/reference/core/" description="The full DeepLinkHub and DeepLinkHandle signatures." />
+- <LinkCard title="Async consumption" href="/guides/async-consumption/" description="Stream-based and async-await consumption patterns." />
+
+
+---
+
+---
+title: Choosing an Adapter
+description: Compare nexum's five UI-framework adapters and pick the one that matches your application's reactive model.
+type: how-to
+---
+
+import { Code, LinkCard } from '@astrojs/starlight/components';
+
+All five adapters wrap the same core: each one calls `nexum_platform::init` under the hood, then bridges incoming `DeepLinkEvent`s into the idioms of its framework. The differences are in what the adapter hands back to you — a raw handle, a signal, a view wrapper, or a one-call launcher. Use this guide to match the integration style to your framework; the linked reference pages carry the exact signatures.
+
+## Decision table
+
+| You are building with | Add | Integration entry point | You receive |
+| --- | --- | --- | --- |
+| Floem | `nexum-floem` + `signal` feature | `nexum_floem::signal(&config)` | `ReadSignal<Option<String>>` updated on a background thread |
+| Xilem | `nexum-xilem` | `nexum_xilem::setup(&config)` then `with_deep_links(view, on_url)` | Deep links routed into your view callbacks |
+| Dioxus (desktop) | `nexum-dioxus` | `nexum_dioxus::launch_desktop(&config, desktop_cfg, app)` | `use_deep_link()` hook → `Signal<Option<String>>` |
+| Leptos (wasm-capable) | `nexum-leptos` + `signal` feature | `nexum_leptos::signal(&config)` | `RwSignal<Option<String>>` driven by `spawn_local` |
+| GPUI / Zed-style app | `nexum-gpui` (git dep) | `nexum_gpui::setup_deep_links(&app, &config)` | `DeepLinkHandle` + `attach_deep_link` into any `Entity` |
+| No framework | `nexum` or `nexum-core` | `nexum::platform::init(&config)` | Raw `DeepLinkHandle` — blocking, async or stream |
+
+## Minimal usage per framework
+
+### Floem
+
+<Code lang="rust" code={`let config = Config::builder().scheme("myapp").build().expect("valid config");
+let url_signal = signal(&config); // ReadSignal<Option<String>>`} />
+
+The `signal` helper spawns a background thread named `nexum-floem` that blocks on the handle and feeds Floem's reactive runtime through `create_signal_from_channel`. The UI thread wakes only when a URL arrives.
+
+### Xilem
+
+<Code lang="rust" code={`nexum_xilem::setup(&config).expect("deep-link setup");
+// in your app logic:
+let content = with_deep_links(base_view, |state: &mut AppState, url| {
+    state.last_url = Some(url);
+});`} />
+
+`with_deep_links` forks a Xilem task onto your view; the callback runs on the app thread like any other Xilem event callback.
+
+### Dioxus
+
+<Code lang="rust" code={`#[component]
+fn App() -> Element {
+    let deep_link = use_deep_link(); // Signal<Option<String>>
+    rsx! { p { "Last deep link: {deep_link:?}" } }
+}
+
+// one-call launch wires tao's Opened events into the hub:
+launch_desktop(&nexum_config, desktop_config, app);`} />
+
+`launch_desktop` performs setup, attaches the tao `Event::Opened` bridge, and launches your app — `use_deep_link()` then works like any other hook.
+
+### Leptos
+
+<Code lang="rust" code={`// native: one call registers and returns a reactive signal
+let url_signal = signal(&config); // RwSignal<Option<String>>`} />
+
+In the browser (where scheme registration is impossible), build your own hub and call `signal_from_handle(&hub.handle())` — it never touches the OS and works under `wasm32-unknown-unknown`.
+
+### GPUI
+
+<Code lang="rust" code={`let handle = setup_deep_links(&app, &config)?;
+attach_deep_link(handle, view.clone(), cx, |view, _cx, url| {
+    view.set_url(url);
+});`} />
+
+`setup_deep_links` installs GPUI's `on_open_urls` callback *before* OS registration so early events are not lost, and `attach_deep_link` spawns a task that wakes your entity for every URL.
+
+## Common rules
+
+- Call the adapter's setup **before** any other consumption — all adapters fail with `Error::HubAlreadySet` if initialized twice, and the handle-based ones panic if you consume before setup.
+- Events always surface as `String` URLs; parse them on demand with `DeepLinkEvent::parse_url` or the `url` crate.
+- For a bounded queue or single-instance hand-off, combine the adapter with the relevant guides — both work with every adapter because they live in the platform layer.
+
+## Adapter reference pages
+
+<LinkCard title="Floem reference" href="/reference/adapters/floem/" description="setup, signal and threading notes." />
+- <LinkCard title="Xilem reference" href="/reference/adapters/xilem/" description="setup, handle and with_deep_links." />
+- <LinkCard title="Dioxus reference" href="/reference/adapters/dioxus/" description="launch_desktop, use_deep_link and the tao bridge." />
+- <LinkCard title="Leptos reference" href="/reference/adapters/leptos/" description="signal, signal_from_handle and wasm support." />
+- <LinkCard title="GPUI reference" href="/reference/adapters/gpui/" description="setup_deep_links and attach_deep_link." />
+
+
+---
+
+---
+title: Install Nexum
+description: Pick the right crate combination for your application — facade, core plus platform, or a framework adapter — and declare the matching feature flags.
+type: how-to
+---
+
+import { Code, LinkCard, TabItem, Tabs } from '@astrojs/starlight/components';
+
+Every nexum crate publishes from the same workspace at the same version, so you install one of three shapes: the **facade** for the one-dependency experience, **core plus platform** when you want explicit control without the macro, or a **framework adapter** to receive events through your UI framework's own reactive types.
+
+<Tabs>
+    <TabItem label="Facade (recommended)">
+<Code lang="toml" code={`[dependencies]
+nexum = "0.3"`} />
+
+        The facade re-exports `Config`, `DeepLinkHub`, `DeepLinkHandle`, the `#[deep_link]` attribute and the whole `platform` module. Use it for desktop apps that want the shortest path from dependency to working deep links.
+    </TabItem>
+    <TabItem label="Core + platform">
+<Code lang="toml" code={`[dependencies]
+nexum-core = "0.3"
+nexum-platform = "0.3"`} />
+
+        Use this shape when you do not want an attribute macro in your build, or when you wire registration yourself — for example inside an existing bootstrap function with custom error handling around `nexum_platform::init`.
+    </TabItem>
+    <TabItem label="Framework adapter">
+<Code lang="toml" code={`[dependencies]
+# Floem — the \`signal\` feature pulls in floem itself
+nexum-floem = { version = "0.3", features = ["signal"] }
+
+# Xilem
+nexum-xilem = "0.3"
+
+# Dioxus (desktop)
+nexum-dioxus = "0.3"
+
+# Leptos — the \`signal\` feature pulls in leptos' reactive core
+nexum-leptos = { version = "0.3", features = ["signal"] }`} />
+
+        `nexum-gpui` is not published to crates.io because it tracks Zed's `main` branch through a git dependency. Depend on it directly from the repository:
+
+<Code lang="toml" code={`[dependencies]
+nexum-gpui = { git = "https://github.com/elcoosp/nexum" }`} />
+    </TabItem>
+</Tabs>
+
+## Feature flags
+
+| Crate | Feature | Enables |
+| --- | --- | --- |
+| `nexum` | `stream` | `DeepLinkStream` (re-exported from core): consume URLs as a `Stream` |
+| `nexum` | `single-instance` | Second-instance hand-off via `nexum::platform::single_instance` |
+| `nexum-core` | `stream` | `DeepLinkHandle::into_stream()` and the `DeepLinkStream` type |
+| `nexum-platform` | `single-instance` | The `single_instance` module (Unix sockets / Windows loopback) |
+| `nexum-floem` | `signal` | `signal()` → Floem `ReadSignal<Option<String>>` (pulls in `floem`) |
+| `nexum-leptos` | `signal` | `signal()` and `signal_from_handle()` → `RwSignal<Option<String>>` (pulls in leptos' reactive core) |
+
+None of these features is on by default — every crate ships with `default = []`, so dependencies stay minimal unless you opt in.
+
+## Requirements
+
+- **Rust 1.85 or newer** — the workspace uses edition 2024 and declares `rust-version = "1.85"`. CI type-checks the core crates on exactly 1.85.
+- **Rust 1.88 or newer for `nexum-leptos`** — the adapter raises its own MSRV to match the leptos 0.9 line, and it type-checks for the `wasm32-unknown-unknown` target.
+- **Linux** — the `xdg-mime` tool must be installed at runtime; registration invokes it once per scheme.
+- **macOS** — registration must run on the main thread; packaged apps declare schemes in `Info.plist` (see the [macOS setup guide](/guides/macos-setup/)).
+
+## Next steps
+
+- <LinkCard title="Build your first deep link" href="/tutorials/getting-started/" description="A full walkthrough from an empty Cargo project to a received URL." />
+- <LinkCard title="Choosing an adapter" href="/guides/choosing-an-adapter/" description="Side-by-side comparison of the five framework integrations." />
+
+
+---
+
+---
+title: Set Up Deep Links on Linux
+description: Learn how nexum writes a .desktop entry, binds schemes with xdg-mime, and where to look when registration fails.
+type: how-to
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+On Linux, nexum registers URL schemes the standards-compliant way: it writes a freedesktop `.desktop` entry into your user's applications directory and asks `xdg-mime` to bind each scheme to that entry. Everything happens inside `nexum::platform::register`, which `init` and the `#[deep_link]` bootstrap call for you.
+
+## The registration flow
+
+1. nexum resolves the running executable with `std::env::current_exe()` and derives an application name from its file stem, keeping only `[A-Za-z0-9._-]`. If nothing survives the sanitization, the fallback name is `nexum-app`.
+2. It creates `{data_local_dir}/applications/` if needed and writes `{app_name}.desktop`. The directory comes from `dirs::data_local_dir()`, so `XDG_DATA_HOME` is honored when set.
+3. For every configured scheme it invokes:
+
+<Code lang="bash" code={`xdg-mime default {app_name}.desktop x-scheme-handler/{scheme}`} />
+
+A non-zero exit status from `xdg-mime` surfaces as `Error::Platform` — typically meaning the tool is not installed (`sudo apt install xdg-utils` on Debian-based systems) or the environment has no usable MIME database.
+
+## The generated desktop entry
+
+The entry nexum writes follows this exact template:
+
+<Code lang="ini" code={`[Desktop Entry]
+Type=Application
+Name={app_name}
+Exec={quoted_exec} %u
+StartupNotify=false
+Icon={icon}
+MimeType=x-scheme-handler/myapp;x-scheme-handler/other;`} />
+
+Two details worth knowing:
+
+- **`Exec` quoting** — the executable path is emitted through a quoting helper: `%` signs are doubled (`%` → `%%`) to survive freedesktop field codes, and the path is wrapped in double quotes (with embedded quotes escaped) whenever it contains spaces.
+- **`Icon` fallback** — when `Config::icon_path` is unset, the entry falls back to the executable path itself, so the MIME association still resolves cleanly.
+
+You set both values through the config:
+
+<Code lang="rust" code={`let config = Config::builder()
+    .scheme("myapp")
+    .icon_path("/usr/share/icons/myapp.png")
+    .build()
+    .expect("valid config");`} />
+
+## How URLs reach your app
+
+The `%u` field code makes the OS start your executable with the URL as an argument — the same command-line cold-start shape as Windows. `register` relays those arguments into the hub via `Config::extract_launch_urls`, producing `DeepLinkEvent`s with `Source::CommandLine`. A second launch therefore consumes its own URL unless you enable [single-instance hand-off](/guides/single-instance/), which forwards it to the original instance over a Unix socket.
+
+<Aside type="danger">
+Registration is idempotent but re-invoked on every launch. If you move or rename the executable, the stale `.desktop` entry remains until the next registration overwrites it under the new app name.
+</Aside>
+
+## Next steps
+
+- <LinkCard title="Single-instance hand-off" href="/guides/single-instance/" description="Forward URLs from second instances over a Unix socket." />
+- <LinkCard title="Platform API reference" href="/reference/platform/" description="The init and register signatures and error behavior." />
+
+
+---
+
+---
+title: Set Up Deep Links on macOS
+description: Declare your URL schemes in Info.plist, validate the bundle at runtime, and understand how nexum receives GURL Apple Events.
+type: how-to
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+On macOS, nexum performs two distinct jobs: at **runtime** it installs an Apple-event handler that receives `GURL` events for URLs the OS dispatches to your *running* app, and at **packaging** time you must declare the schemes in the app bundle's `Info.plist`. The library never edits your plist for you — instead it generates the XML you need and verifies that the built bundle matches your `Config`.
+
+## Declare the schemes in Info.plist
+
+Add a `CFBundleURLTypes` entry listing every scheme from your `Config`. Generate the exact XML nexum expects with `url_types_xml`, which renders the full `<key>CFBundleURLTypes</key><array>…</array>` block:
+
+<Code lang="rust" code={`use nexum_core::Config;
+use nexum_platform::plist;
+
+let config = Config::builder().scheme("myapp").build().expect("valid config");
+println!("{}", plist::url_types_xml(&config));`} />
+
+If you package with `cargo-bundle`, the `[package.metadata.bundle]` `osx_url_schemes` key produces the same declaration:
+
+<Code lang="toml" code={`[package.metadata.bundle]
+identifier = "com.example.myapp"
+osx_url_schemes = ["myapp"]`} />
+
+The example apps in the nexum repository use exactly this mechanism.
+
+## Validate the built bundle
+
+`validate_bundle` (re-exported from `nexum_platform` on macOS targets) reads the running bundle's `Contents/Info.plist` — or `Info.plist` directly for iOS-style layouts — and returns every configured scheme that the plist does **not** declare:
+
+<Code lang="rust" code={`let missing = nexum_platform::validate_bundle(&config).expect("readable plist");
+if !missing.is_empty() {
+    eprintln!("schemes missing from Info.plist: {missing:?}");
+}`} />
+
+For a text-level check without touching the bundle, `plist::missing_schemes` compares any plist XML against a `Config` case-insensitively (Apple lower-cases scheme strings) and tolerates arbitrary formatting:
+
+<Code lang="rust" code={`let missing = nexum_platform::plist::missing_schemes(&plist_xml, &config);`} />
+
+A broken or empty plist reports *all* schemes as missing — the function never panics.
+
+<Aside type="danger">
+Run `register` on the main thread. On macOS it installs the Apple-event delegate through `NSAppleEventManager`, and calling it off the main thread returns `Error::Platform("deep links must be registered on the main thread")`. The `#[deep_link]` bootstrap runs at the top of `main`, which satisfies this on every platform.
+</Aside>
+
+## How runtime delivery works
+
+When the user opens `myapp://open/settings` while your app runs, the OS sends a `GURL` Apple event to the process. Nexum's delegate extracts the `keyDirectObject` descriptor and pushes the URL string into the hub. Two behaviors are worth knowing precisely:
+
+1. **Delivery source** — GURL events are pushed via `push_launch_url`, so the resulting `DeepLinkEvent` carries `Source::CommandLine` rather than `Source::System`. Treat the two sources as *cold start* versus *warm runtime* semantics carefully on macOS; see [Event sources explained](/explanation/event-sources/).
+2. **Cold start** — when the OS launches your app for a URL, the URL does not arrive on the command line as it does on Windows and Linux; it arrives as a `GURL` event right after startup, once the delegate is installed.
+
+## Next steps
+
+- <LinkCard title="Platform API reference" href="/reference/platform/" description="init, register, validate_bundle and the plist module signatures." />
+- <LinkCard title="Event sources explained" href="/explanation/event-sources/" description="System versus CommandLine delivery semantics." />
+
+
+---
+
+---
+title: Handle Mobile Deep Links
+description: Generate Android intent filters and iOS URL types, and feed runtime URLs from framework glue into the nexum hub.
+type: how-to
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+Mobile platforms have no API nexum can call to register a scheme — both Android and iOS declare schemes statically in app metadata. Nexum therefore ships **generators** for those declarations plus small intake functions your framework glue calls when the OS hands over a URL.
+
+## Declare the schemes
+
+**Android** — `nexum_platform::mobile::android_manifest_intent_filter` renders a complete `<intent-filter>` (VIEW action, `DEFAULT` + `BROWSABLE` categories, one `<data android:scheme="...">` per configured scheme). Paste it into the activity in your `AndroidManifest.xml`:
+
+<Code lang="rust" code={`let config = Config::builder().scheme("myapp").build().expect("valid config");
+let filter_xml = nexum_platform::mobile::android_manifest_intent_filter(&config);`} />
+
+Generated shape:
+
+<Code lang="xml" code={`<intent-filter>
+ <action android:name="android.intent.action.VIEW" />
+ <category android:name="android.intent.category.DEFAULT" />
+ <category android:name="android.intent.category.BROWSABLE" />
+ <data android:scheme="myapp" />
+</intent-filter>`} />
+
+**iOS** — use `nexum_platform::plist::url_types_xml` to render the `CFBundleURLTypes` block for your app's `Info.plist`, exactly as on desktop macOS. `plist::missing_schemes` lets you verify the built plist against a `Config` in a test.
+
+## Feed runtime URLs into the hub
+
+Initialize the global hub once at startup — for example by storing a hub with `set_hub` — then call the intake function for your platform from the framework glue that receives OS callbacks:
+
+| Platform | Callback you wire | Intake function |
+| --- | --- | --- |
+| Android | `onCreate` / `onNewIntent` (`Intent.getDataString()`) | `nexum_platform::mobile::push_intent_url(url)` |
+| iOS | `openURLContexts(_:)` / `open URL:` delegate | `nexum_platform::mobile::push_open_urls(urls)` |
+
+Both push into the global hub as `Source::System` and return `Err(Error::HubNotSet)` if the hub was never initialized, so a wiring mistake fails loudly at first use:
+
+<Code lang="rust" code={`// Android JNI glue (pseudo-call):
+nexum_platform::mobile::push_intent_url(intent_data_string)?;
+
+// iOS delegate (pseudo-call):
+nexum_platform::mobile::push_open_urls(url_strings)?;`} />
+
+<Aside type="danger">
+The intake functions are target-gated: `push_intent_url` compiles only on `target_os = "android"` and `push_open_urls` only on `target_os = "ios"`. Gate your glue code with the same cfg attributes. CI type-checks the platform crate against real Android and iOS targets so this cannot silently rot.
+</Aside>
+
+## Consumption stays unchanged
+
+Everything downstream of the hub is identical to desktop: your adapter signal, `DeepLinkHandle` consumer, bounded-queue policy, and event parsing work the same, because mobile events differ only in how they *enter* the hub.
+
+## Next steps
+
+- <LinkCard title="Platform API reference" href="/reference/platform/" description="The mobile and plist module signatures." />
+- <LinkCard title="Event sources explained" href="/explanation/event-sources/" description="How mobile intake events are classified." />
+
+
+---
+
+---
+title: Single-Instance Hand-Off
+description: Forward deep links from a second app instance into the running one with nexum's single-instance feature.
+type: how-to
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+On Windows and Linux a deep link usually launches a **second** instance of your app. The `single-instance` feature turns that launch into a hand-off: the second instance forwards its URLs to the original process over a local socket and exits, so only one copy of your app stays alive.
+
+## Enable the feature
+
+<Code lang="toml" code={`[dependencies]
+nexum = { version = "0.3", features = ["single-instance"] }`} />
+
+The module lives in the platform layer, so `nexum::platform::single_instance` is the entry point (or `nexum_platform::single_instance` if you depend on the platform crate directly).
+
+## Use it at startup
+
+Call `acquire` **after** the hub is initialized (`init`, `init_with` or `set_hub` — otherwise you get `Error::HubNotSet`), passing the URLs the current process should deliver:
+
+<Code lang="rust" code={`use nexum::platform::single_instance::{acquire, Acquisition};
+
+let urls = config.extract_launch_urls(std::env::args().skip(1));
+
+match acquire(&config, &urls)? {
+    Acquisition::Primary(_guard) => {
+                    // This process owns the deep-link socket.
+                    // Keep \`_guard\` alive for the whole app lifetime.
+                    run_app();
+    }
+    Acquisition::HandedOff { forwarded } => {
+                    // Another instance answered; \`forwarded\` URLs were
+                    // delivered to it. Exit this process now.
+    }
+}`} />
+
+Each forwarded URL arrives in the primary's hub as a normal `DeepLinkEvent` with `Source::System`, so consumers treat hand-offs exactly like OS-delivered links.
+
+<Aside type="danger">
+Dropping the `PrimaryGuard` closes the socket immediately. Hold it in your app state for the process lifetime — the compiler annotates it `#[must_use]` for exactly this reason.
+</Aside>
+
+## Transport details
+
+| Property | Unix | Windows |
+| --- | --- | --- |
+| Socket | Unix domain socket named `nexum-{hash}.sock` (FNV-1a of the lowercased schemes) | Loopback TCP on `127.0.0.1`, port `47000 + (hash % 1000)` |
+| Directory | `XDG_RUNTIME_DIR` if set, else the system temp directory | System temp directory |
+| Protocol | `NEXUM/1 {count}` header, one URL per line, terminated by an `OK` acknowledgment | Same protocol |
+| Handshake timeout | 2 seconds | 2 seconds |
+
+The socket name derives from your configured schemes, so apps with different schemes never collide. Foreign peers are rejected by the magic-header check, and a handshake that ends without the expected `OK` fails with an error naming the cause.
+
+## Troubleshooting
+
+- **`stale single-instance socket: the previous instance crashed`** — a previous primary died without cleanup and left the socket file. Nexum detects the connection refusal and reports it explicitly; the next run takes over as primary.
+- **`the running instance did not acknowledge the hand-off`** — something answered on the socket but did not speak the nexum protocol, or the primary stalled past the 2-second timeout.
+- **URLs not arriving** — confirm `acquire` runs after hub initialization in *both* instances, and that the second instance passes its extracted command-line URLs as the `urls` slice.
+
+## Next steps
+
+- <LinkCard title="Event sources explained" href="/explanation/event-sources/" description="Why forwarded links appear as Source::System." />
+- <LinkCard title="Platform API reference" href="/reference/platform/" description="The single_instance module signatures." />
+
+
+---
+
+---
+title: Set Up Deep Links on Windows
+description: Understand the per-user registry keys nexum writes for your URL schemes and how command-line cold starts deliver URLs.
+type: how-to
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+On Windows, nexum registers each configured scheme under the **current user's** registry hive — no administrator rights are required. Registration happens inside `nexum::platform::register` (called by `init` or by the `#[deep_link]` bootstrap) using the path of the currently running executable.
+
+## What gets written
+
+For every scheme in your `Config`, nexum writes three registry values below `HKEY_CURRENT_USER\Software\Classes`:
+
+| Registry key | Value | Content |
+| --- | --- | --- |
+| `Software\Classes\myapp` | *(default)* | `URL:myapp Protocol` |
+| `Software\Classes\myapp` | `URL Protocol` | empty string — the marker that turns the key into a protocol handler |
+| `Software\Classes\myapp\DefaultIcon` | *(default)* | `{icon_path},0`, falling back to `{exe_path},0` |
+| `Software\Classes\myapp\shell\open\command` | *(default)* | `"{exe_path}" "%1"` |
+
+The executable path comes from `std::env::current_exe()` at registration time, and the icon comes from `Config::icon_path` when you set one:
+
+<Code lang="rust" code={`let config = Config::builder()
+    .scheme("myapp")
+    .icon_path("C:/apps/icons/myapp.ico")
+    .build()
+    .expect("valid config");`} />
+
+Because the `shell\open\command` template passes `"%1"` as an argument, the OS launches your executable with the URL as a command-line parameter for every deep link — both cold starts and warm invocations.
+
+## How URLs reach your app
+
+`register` finishes by relaying the current process's arguments: `relay_cold_start_urls` runs `Config::extract_launch_urls` over `std::env::args().skip(1)`, keeps every argument that parses as an absolute URL with one of your configured schemes (case-insensitive), and pushes each one into the hub with `push_launch_url`.
+
+The result is a uniform flow:
+
+1. The user opens `myapp://open/settings`.
+2. The OS resolves the protocol handler and starts (or re-starts) your executable with the URL in its arguments.
+3. The new instance registers the scheme idempotently, extracts the URL from `argv`, and delivers a `DeepLinkEvent` with `url = "myapp://open/settings"` and `source = Source::CommandLine`.
+4. Without the single-instance feature, the second process consumes the URL itself; with it, the URL is forwarded to the original instance over loopback TCP and the second process exits.
+
+<Aside type="tip">
+Scheme-only URLs such as `myapp:` are valid and are extracted too — `extract_launch_urls` accepts them by design.
+</Aside>
+
+## Next steps
+
+- <LinkCard title="Single-instance hand-off" href="/guides/single-instance/" description="Route deep links from second instances into the first." />
+- <LinkCard title="Platform API reference" href="/reference/platform/" description="init, register and the global hub functions." />
+
+
+---
+
+---
+title: Nexum
+description: Framework-agnostic deep linking for Rust — register custom URL schemes and receive deep-link events with one unified API.
+type: overview
+template: splash
+hero:
+        title: Nexum
+        tagline: Framework-agnostic deep linking for Rust. Register custom URL schemes and receive deep-link events with one unified API across Windows, macOS and Linux — plus declarative support for Android and iOS.
+        image:
+                file: ../../assets/logo.png
+                alt: Nexum logo
+        actions:
+                - text: Build your first deep link
+                  link: /tutorials/getting-started/
+                  icon: right-arrow
+                - text: API Reference
+                  link: /reference/nexum/
+                  variant: minimal
+---
+
+import { Card, CardGrid, LinkButton } from '@astrojs/starlight/components';
+import { Image } from 'astro:assets';
+import heroLogo from '../../assets/hero-logo.png';
+
+`nexum` gives Rust applications a single, consistent way to handle custom URL schemes. You declare the schemes your app owns, nexum registers them with the operating system, and your code receives every deep-link event — whether the URL arrives from a browser, a second process, or the command line — through one producer-consumer channel.
+
+The workspace is organized so you depend on exactly what you need: [`nexum-core`](/reference/core/) holds the framework-independent primitives, [`nexum-platform`](/reference/platform/) performs OS-level registration, and thin adapter crates expose everything through the idioms of five UI frameworks.
+
+## Choose your path
+
+<CardGrid stagger>
+        <Card title="Build your first deep link">
+                A hands-on tutorial that takes you from an empty Cargo project to a running app that receives deep links on your platform.
+        </Card>
+        <Card title="Accomplish a task">
+                How-to guides for installation, per-platform setup, single-instance hand-off, bounded queues, async consumption and mobile intake.
+        </Card>
+        <Card title="Look up the API">
+                Reference pages for every public crate, with exact signatures, feature flags, defaults and platform behavior tables.
+        </Card>
+        <Card title="Understand the design">
+                Explanations of the producer-consumer architecture, event sources, and the engineering principles behind the crates.
+        </Card>
+</CardGrid>
+
+<LinkButton href="/tutorials/getting-started/" icon="right-arrow">Start the tutorial</LinkButton>
+
+## The ecosystem at a glance
+
+| Crate                                         | Purpose                                                                                 |
+| --------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [`nexum`](/reference/nexum/)                  | Facade: core + platform + the `#[deep_link]` bootstrap attribute in one dependency      |
+| [`nexum-core`](/reference/core/)              | `DeepLinkHub` producer and `DeepLinkHandle` consumer — blocking, async, stream, bounded |
+| [`nexum-platform`](/reference/platform/)      | OS registration, single-instance hand-off, plist validation, mobile intake              |
+| [`nexum-macros`](/reference/macros/)          | The `#[deep_link(schemes = ["myapp"])]` attribute                                       |
+| [`nexum-floem`](/reference/adapters/floem/)   | Floem adapter returning a reactive `ReadSignal<Option<String>>`                         |
+| [`nexum-xilem`](/reference/adapters/xilem/)   | Xilem adapter with the `with_deep_links` view wrapper                                   |
+| [`nexum-dioxus`](/reference/adapters/dioxus/) | Dioxus adapter with a one-call `launch_desktop` path                                    |
+| [`nexum-leptos`](/reference/adapters/leptos/) | Leptos adapter returning `RwSignal<Option<String>>`, wasm-ready                         |
+| [`nexum-gpui`](/reference/adapters/gpui/)     | GPUI adapter for Zed-style applications                                                 |
+
+## Platform support
+
+| Platform          | Registration method                       | Runtime detection                 |
+| ----------------- | ----------------------------------------- | --------------------------------- |
+| **Windows**       | Registry (per-user)                       | CLI arguments                     |
+| **macOS**         | `Info.plist` (validator included)         | Apple Events (`GURL` via `objc2`) |
+| **Linux**         | `.desktop` file + `xdg-mime`              | CLI arguments                     |
+| **Android / iOS** | Declarative (manifest / plist generators) | Framework glue → `mobile::push_*` |
+
+
+---
+
+---
+title: nexum-dioxus Reference
+description: Dioxus desktop adapter — launch_desktop, the use_deep_link hook and the tao Opened-event bridge.
+type: reference
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+`nexum-dioxus` integrates deep links into Dioxus desktop applications. Besides the usual core and platform re-exports, it re-exports `dioxus::LaunchBuilder` and the desktop config types (`dioxus_desktop::Config` as `DesktopConfig`, `LogicalSize`, `WindowBuilder`) so a deep-link app needs no extra imports for launching.
+
+## API
+
+| Item | Signature | Description |
+| --- | --- | --- |
+| `setup` | `fn setup(config: &Config) -> Result<()>` | Registers and stores the handle globally; `HubAlreadySet` on double init |
+| `handle` | `fn handle() -> &'static DeepLinkHandle` | Stored handle; **panics** before `setup` |
+| `use_deep_link` | `fn use_deep_link() -> Signal<Option<String>>` | Hook returning a signal that updates on every URL; **panics** before `setup` |
+| `with_deep_link_handler` | `fn with_deep_link_handler(config: DesktopConfig) -> DesktopConfig` | Attaches a custom event handler that feeds tao's `Event::Opened` URLs into the hub |
+| `launch_desktop` | `fn launch_desktop(config: &Config, desktop_config: DesktopConfig, app: fn() -> Element)` | One-call path: setup + handler + launch |
+
+## The one-call path
+
+<Code lang="rust" code={`let nexum_config = Config::builder().scheme("myapp").build().expect("valid config");
+
+let desktop_config = DesktopConfig::new()
+    .with_window(WindowBuilder::new().with_title("Deep Link Demo"));
+
+launch_desktop(&nexum_config, desktop_config, app);`} />
+
+`launch_desktop` runs `setup` (**panicking** on failure with `nexum-dioxus: deep-link setup failed`), wraps the desktop config with `with_deep_link_handler`, and launches through `LaunchBuilder`. Note the `app` parameter is a plain function pointer `fn() -> Element`.
+
+## The hook
+
+<Code lang="rust" code={`#[component]
+fn App() -> Element {
+    let deep_link = use_deep_link();
+    rsx! {
+                    p { "Last deep link: {deep_link:?}" }
+    }
+}`} />
+
+The signal starts as `None` and is replaced by each arriving URL. A `use_future` internally awaits `handle.recv()` and writes into the signal.
+
+## Event wiring and cold start
+
+`with_deep_link_handler` pattern-matches tao's `Event::Opened` and pushes each URL into the hub with `nexum_platform::push_url`. Two behaviors follow from that design:
+
+- URLs arriving through tao events are delivered as `Source::System`.
+- Push errors are deliberately ignored (`.ok()`): after hub shutdown the event stream stops contributing.
+- Cold starts on Windows and Linux still arrive via the command-line relay inside `setup` — before your components render — so the hook can already hold the launch URL on first paint.
+
+<Aside type="danger">
+The adapter pins `tao 0.34.8` to match `dioxus-desktop`'s requirement; both crates must see the identical event enum. Cargo resolves this automatically when versions align — do not override tao in your own manifest.
+</Aside>
+
+## Next steps
+
+- <LinkCard title="Choosing an adapter" href="/guides/choosing-an-adapter/" description="Where dioxus fits among the five integrations." />
+- <LinkCard title="Platform reference" href="/reference/platform/" description="The global hub functions the event handler calls." />
+
+
+---
+
+---
+title: nexum-floem Reference
+description: Floem adapter — setup, the signal bridge, feature flags and threading notes.
+type: reference
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+`nexum-floem` integrates deep links into Floem's reactive runtime. It re-exports the core types (`Config`, `DeepLinkHandle`, `DeepLinkEvent`, `Source`, `Error`, `Result`, …) and the whole `platform` module alias, so adapter and primitives share one import.
+
+## API
+
+| Function | Signature | Feature | Description |
+| --- | --- | --- | --- |
+| `setup` | `fn setup(config: &Config) -> Result<DeepLinkHandle>` | always | Thin wrapper over `nexum_platform::init`; returns the raw consumer handle |
+| `signal` | `fn signal(config: &Config) -> floem::reactive::ReadSignal<Option<String>>` | `signal` | Registers and returns a reactive signal holding the latest URL |
+
+## The signal bridge
+
+`signal(&config)` performs registration (**panicking** on failure), then spawns a background thread named `nexum-floem` that blocks on `recv_blocking` and forwards each URL into a one-slot crossbeam mailbox. The mailbox is connected to Floem's runtime with `create_signal_from_channel`, so the UI thread wakes only when a URL arrives. The returned signal starts as `None` and holds the most recent URL.
+
+<Code lang="rust" code={`use floem::prelude::*;
+use nexum_floem::{Config, signal};
+
+let config = Config::builder().scheme("myapp").build().expect("valid config");
+let url_signal = signal(&config); // ReadSignal<Option<String>>
+
+// in a view:
+label(move || url_signal.get().unwrap_or_else(|| "No deep link received".into()))`} />
+
+<Aside type="danger">
+`signal` is `#[must_use]` and panics on registration failure (`nexum-floem: deep-link registration failed`). For fallible control, call `setup` and wire the returned `DeepLinkHandle` through your own channel; the signal feature is a convenience, not a requirement.
+</Aside>
+
+## Feature flags
+
+| Feature | Default | Pulls in | Enables |
+| --- | --- | --- | --- |
+| `signal` | off | `floem` 0.2, `crossbeam-channel` | The `signal()` helper |
+
+Without the feature the crate depends only on `nexum-core` and `nexum-platform` — useful for setups that consume the raw handle with their own threading.
+
+## Threading notes
+
+- The bridge thread blocks on the handle, so it must never be the UI thread — nexum creates it for you in `signal`.
+- The `ReadSignal` updates only inside a live Floem event loop; values pushed before `floem::launch` are visible once the loop starts.
+- Clone the `DeepLinkHandle` from `setup` if you need a second consumer alongside the signal; the hub delivers each event to exactly one consumer (round-robin).
+
+## Next steps
+
+- <LinkCard title="Choosing an adapter" href="/guides/choosing-an-adapter/" description="Compare floem with the other four integrations." />
+- <LinkCard title="Core reference" href="/reference/core/" description="The DeepLinkHandle consumed under the hood." />
+
+
+---
+
+---
+title: nexum-gpui Reference
+description: GPUI adapter — setup_deep_links, attach_deep_link and the callback-before-registration ordering.
+type: reference
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+`nexum-gpui` integrates deep links into GPUI applications (Zed-style UIs). The crate is **not a workspace member** and is not published to crates.io: GPUI itself moves with Zed's `main` branch, so `nexum-gpui` tracks it through a git dependency and is verified separately. Depend on it directly from the repository:
+
+<Code lang="toml" code={`[dependencies]
+nexum-gpui = { git = "https://github.com/elcoosp/nexum" }`} />
+
+## API
+
+| Function | Signature | Description |
+| --- | --- | --- |
+| `setup_deep_links` | `fn setup_deep_links(app: &gpui::Application, config: &Config) -> Result<DeepLinkHandle>` | Creates a hub, installs GPUI's `on_open_urls` bridge, registers with the OS, returns the consumer handle |
+| `attach_deep_link` | `fn attach_deep_link<V: 'static>(handle: DeepLinkHandle, view: Entity<V>, cx: &mut App, on_url: impl Fn(&mut V, &mut gpui::Context<V>, String) + 'static)` | Spawns a GPUI async task that wakes your entity for every URL |
+
+## Ordering guarantee
+
+`setup_deep_links` performs its steps deliberately: it calls `app.on_open_urls(...)` **before** `nexum_platform::register(config)`. If the OS starts delivering URLs the instant registration completes, the callback is already installed and the events are not lost. Each URL the callback receives is pushed into the global hub with `nexum_platform::push_url` (errors ignored, as with all fire-and-forget bridges).
+
+Calling `setup_deep_links` a second time fails with `Error::HubAlreadySet` — the global hub can only be installed once per process.
+
+## Receiving URLs in a view
+
+<Code lang="rust" code={`let handle = setup_deep_links(&app, &config)?;
+
+// after opening a window and creating your view entity:
+attach_deep_link(handle, view.clone(), cx, |view, _cx, url| {
+    view.set_url(url);
+});`} />
+
+`attach_deep_link` spawns a task on GPUI's executor and detaches it: for every received URL it updates the entity through `view.update(...)` and calls `cx.notify()` so GPUI re-renders. The task lives as long as the app or until the channel shuts down.
+
+<Aside type="tip">
+The callback signature mirrors GPUI's own update closures — `(&mut V, &mut Context<V>, String)` — so state mutation and rendering invalidation follow the framework's normal rules.
+</Aside>
+
+## Next steps
+
+- <LinkCard title="Choosing an adapter" href="/guides/choosing-an-adapter/" description="How the GPUI integration compares." />
+- <LinkCard title="Platform reference" href="/reference/platform/" description="register and the global hub the bridge feeds." />
+
+
+---
+
+---
+title: nexum-leptos Reference
+description: Leptos adapter — setup, reactive signals, browser-safe operation under wasm32 and the raised MSRV.
+type: reference
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+`nexum-leptos` bridges deep links into Leptos' reactive system, and unlike the desktop adapters it type-checks for the browser: `wasm32-unknown-unknown` is a supported target, with the registration step factored so browser builds can run without touching the OS. The adapter raises its own MSRV to **1.88** to match the leptos 0.9 line (it tracks the 0.9 release candidate with `default-features = false`, pulling only the reactive core).
+
+## API
+
+| Item | Signature | Feature | Description |
+| --- | --- | --- | --- |
+| `setup` | `fn setup(config: &Config) -> Result<DeepLinkHandle>` | always | Wrapper over `nexum_platform::init`; no leptos dependency needed |
+| `signal` | `fn signal(config: &Config) -> RwSignal<Option<String>>` | `signal` | Registers (**panicking** on failure) and returns the reactive signal |
+| `signal_from_handle` | `fn signal_from_handle(handle: &DeepLinkHandle) -> RwSignal<Option<String>>` | `signal` | Signal from an existing handle — **never touches the OS**, browser-safe |
+| `relay_to_signal` | `async fn relay_to_signal(handle: DeepLinkHandle, signal: RwSignal<Option<String>>)` | `signal` | The public relay loop, available for custom wiring |
+
+Everything downstream is ordinary reactive code: `signal_from_handle` creates `RwSignal::new(None)` and spawns the relay with `spawn_local`.
+
+## Native usage
+
+<Code lang="rust" code={`let url_signal = nexum_leptos::signal(&config); // RwSignal<Option<String>>`} />
+
+`signal` calls `setup` internally and expects registration to succeed (`nexum-leptos: deep-link registration failed` on failure). The returned `RwSignal` starts as `None` and is replaced by each URL.
+
+## Browser usage (wasm32)
+
+A browser cannot register URL schemes, so invert the flow: own a hub yourself, expose deep-link URLs to it (for example from a `?url=` query parameter or a test harness), and derive the signal from the handle:
+
+<Code lang="rust" code={`let hub = DeepLinkHub::new();
+let url_signal = signal_from_handle(&hub.handle()); // no OS access
+hub.push_url("myapp://demo/open");`} />
+
+`signal_from_handle` spawns the relay with `spawn_local`, which requires an initialized async executor — Leptos sets one up in `mount_to_body` on web (and SSR runtimes do the same server-side). The adapter's own tests drive the identical bridge headlessly on a tokio `LocalSet`, so wasm behavior is covered without a browser.
+
+## Feature flags
+
+| Feature | Default | Pulls in | Enables |
+| --- | --- | --- | --- |
+| `signal` | off | `leptos` 0.9 (reactive core only) | `signal`, `signal_from_handle`, `relay_to_signal` |
+
+Without the feature you get `setup` and the raw `DeepLinkHandle` — enough to wire any consumption pattern yourself.
+
+<Aside type="danger">
+Require Rust 1.88 or newer when using this adapter (the workspace baseline of 1.85 does not apply here). CI type-checks `nexum-leptos` and the leptos example for `wasm32-unknown-unknown`.
+</Aside>
+
+## Next steps
+
+- <LinkCard title="Event sources explained" href="/explanation/event-sources/" description="Classifying System versus CommandLine events in the browser demo." />
+- <LinkCard title="Core reference" href="/reference/core/" description="The hub/handle pair the browser path uses." />
+
+
+---
+
+---
+title: nexum-xilem Reference
+description: Xilem adapter — setup, the with_deep_links view wrapper and message-relay behavior.
+type: reference
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+`nexum-xilem` routes deep-link events into Xilem's view tree through a task-based relay. It re-exports the core types and the `platform` module alias like every adapter.
+
+## API
+
+| Item | Signature | Description |
+| --- | --- | --- |
+| `setup` | `fn setup(config: &Config) -> Result<()>` | Registers with the OS and stores the handle process-globally; `HubAlreadySet` on double init |
+| `handle` | `fn handle() -> &'static DeepLinkHandle` | The stored handle; **panics** if `setup` was not called |
+| `with_deep_links` | `fn with_deep_links<State, V>(view: V, on_url: impl Fn(&mut State, String) + Send + Sync + 'static) -> impl WidgetView<State>` | Wraps a view: forks a Xilem task that forwards URLs to `on_url` |
+
+`State` must be `'static` and `V` a `WidgetView<State>`. No feature flags exist — everything is always available.
+
+## Usage
+
+<Code lang="rust" code={`nexum_xilem::setup(&config).expect("deep-link setup");
+
+fn app_logic(state: &mut AppState) -> impl WidgetView<AppState> + use<> {
+    let content = /* your normal view */;
+    with_deep_links(content, |state: &mut AppState, url| {
+                    state.last_url = Some(url);
+    })
+}`} />
+
+## How delivery works
+
+`with_deep_links` builds a `task_raw` whose async body awaits `handle.recv()` in a loop and pushes each URL through Xilem's `MessageProxy`; the returned task is combined with your view via `fork`. Consequences worth knowing:
+
+- The `on_url` callback runs on the **app thread**, exactly like a regular Xilem event callback — no extra synchronization needed for `State`.
+- The relay ends silently when the view tree or driver goes away (the proxy reports a send error), so teardown is automatic.
+- Calling `handle()` or `with_deep_links` before `setup` panics with `nexum_xilem::setup must be called before consuming deep links` — a deliberate programming-error signal.
+
+<Aside type="tip">
+Because `setup` is fallible and `with_deep_links` is not, call `setup` in `main` before constructing the `Xilem` driver, then treat the rest of the integration as infallible.
+</Aside>
+
+## Next steps
+
+- <LinkCard title="Async consumption guide" href="/guides/async-consumption/" description="The recv loop this adapter runs on your behalf." />
+- <LinkCard title="Core reference" href="/reference/core/" description="The handle stored by setup." />
+
+
+---
+
+---
+title: nexum-core Reference
+description: Config, ConfigBuilder, AppLink, DeepLinkHub, DeepLinkHandle, DeepLinkEvent, Source and DeepLinkStream — the framework-independent primitives.
+type: reference
+---
+
+import { Code, LinkCard } from '@astrojs/starlight/components';
+
+`nexum-core` holds everything that does not touch the operating system: configuration, the producer-consumer event channel, and the event type. All items are re-exported flat from the crate root, and the crate compiles with `#![forbid(unsafe_code)]`. The transport is `async-channel`, so every async API works on any executor — and on wasm.
+
+## Config
+
+Describes what your application owns and how it presents itself to the OS.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `schemes` | `Vec<String>` | `[]` | URL schemes the app handles, e.g. `myapp` |
+| `app_links` | `Vec<AppLink>` | `[]` | App links (universal links) the app claims |
+| `icon_path` | `Option<PathBuf>` | `None` | Icon for the OS protocol handler (Windows `DefaultIcon`, Linux `Icon=`) |
+
+| Method | Signature | Description |
+| --- | --- | --- |
+| `new` | `fn new(schemes: impl IntoIterator<Item: Into<String>>) -> Self` | Struct-literal-friendly constructor from schemes |
+| `builder` | `fn builder() -> ConfigBuilder` | Returns a fresh builder |
+| `with_app_links` | `fn with_app_links(self, links: impl IntoIterator<Item = AppLink>) -> Self` | **Replaces** the app-link list |
+| `with_app_link` | `fn with_app_link(self, link: AppLink) -> Self` | Appends one app link |
+| `with_icon_path` | `fn with_icon_path(self, path: impl Into<PathBuf>) -> Self` | Sets the icon path |
+| `validate` | `fn validate(&self) -> Result<()>` | Checks schemes against the RFC 3986 grammar and app-link hosts |
+| `validate_scheme` | `fn validate_scheme(scheme: &str) -> Result<()>` | Associated function: first char ASCII alphabetic, then alphanumerics or `+ - .` |
+| `extract_launch_urls` | `fn extract_launch_urls<I>(&self, args: I) -> Vec<String>` | Keeps every argument that parses as an absolute URL with a configured scheme (case-insensitive); preserves order; accepts scheme-only URLs like `myapp:` |
+
+## ConfigBuilder
+
+| Method | Signature | Description |
+| --- | --- | --- |
+| `scheme` | `fn scheme(self, scheme: impl Into<String>) -> Self` | Appends one scheme |
+| `schemes` | `fn schemes(self, schemes: impl IntoIterator<Item: Into<String>>) -> Self` | Appends several |
+| `app_link` | `fn app_link(self, link: AppLink) -> Self` | Appends one app link |
+| `app_links` | `fn app_links(self, links: impl IntoIterator<Item = AppLink>) -> Self` | Appends several |
+| `icon_path` | `fn icon_path(self, path: impl Into<PathBuf>) -> Self` | Sets the icon path |
+| `build` | `fn build(self) -> Result<Config>` | Builds and runs `validate`; an empty builder fails with `Error::NoSchemes` |
+
+## AppLink
+
+| Field / method | Type or signature | Description |
+| --- | --- | --- |
+| `host` | `String` | The host this app claims, e.g. `example.com` |
+| `path_prefixes` | `Vec<String>` | Each starts with `/`; an empty list claims the whole host |
+| `new` | `fn new(host: impl Into<String>, path_prefixes: impl IntoIterator<Item: Into<String>>) -> Self` | Constructor |
+
+## DeepLinkHub — the producer
+
+The hub owns the event queue. It is a multi-producer, **multi-consumer** channel: each event goes to exactly one consumer, chosen round-robin among live receivers. Clone handles for load-sharing; there is no broadcast.
+
+| Method | Signature | Description |
+| --- | --- | --- |
+| `new` | `fn new() -> Self` | Unbounded queue (also `Default`) |
+| `bounded` | `fn bounded(capacity: usize) -> Self` | Capacity clamped to at least 1; see the [bounded guide](/guides/bounded-hub/) |
+| `capacity` | `fn capacity(&self) -> Option<usize>` | `None` means unbounded |
+| `sender` | `fn sender(&self) -> async_channel::Sender<DeepLinkEvent>` | Escape hatch for custom framework bridges |
+| `push_url` | `fn push_url(&self, url: impl Into<String>)` | Pushes with `Source::System`; blocks when a bounded queue is full; silently drops after shutdown |
+| `push_launch_url` | `fn push_launch_url(&self, url: impl Into<String>)` | Pushes with `Source::CommandLine` |
+| `try_push_url` | `fn try_push_url(&self, url: impl Into<String>) -> Result<(), Error>` | Non-blocking; `QueueFull` or `HubClosed` |
+| `try_push_launch_url` | `fn try_push_launch_url(&self, url: impl Into<String>) -> Result<(), Error>` | Same, with `Source::CommandLine` |
+| `push_event` | `fn push_event(&self, event: DeepLinkEvent)` | Pushes a pre-built event, keeping its source |
+| `try_push_event` | `fn try_push_event(&self, event: DeepLinkEvent) -> Result<(), Error>` | Non-blocking variant |
+| `handle` | `fn handle(&self) -> DeepLinkHandle` | Creates an additional consumer |
+
+<Code lang="rust" code={`use nexum_core::{Config, DeepLinkHub, Source};
+
+let config = Config::new(["myapp"]).validate().expect("valid config");
+let hub = DeepLinkHub::new();
+let handle = hub.handle();
+
+hub.push_url("myapp://open/settings");
+assert_eq!(handle.try_recv().as_deref(), Some("myapp://open/settings"));
+
+hub.push_launch_url("myapp://open/doc/42");
+let event = handle.recv_event_blocking().expect("event");
+assert_eq!(event.source, Source::CommandLine);`} />
+
+## DeepLinkHandle — the consumer
+
+`DeepLinkHandle` is `Clone`; each clone is an independent consumer in the round-robin. Blocking methods are unavailable on wasm targets.
+
+| Method | Signature | Notes |
+| --- | --- | --- |
+| `new` | `fn new(rx: Receiver<DeepLinkEvent>) -> Self` | Adopts any raw `async_channel` receiver |
+| `recv` | `async fn recv(&self) -> Option<String>` | `None` after shutdown |
+| `recv_event` | `async fn recv_event(&self) -> Option<DeepLinkEvent>` | Async variant with source |
+| `recv_url` | `async fn recv_url(&self) -> Option<Result<url::Url>>` | Malformed URL arrives as `Some(Err(_))` |
+| `recv_blocking` | `fn recv_blocking(&self) -> Result<String>` | Native only; `Error::HubClosed` on shutdown |
+| `recv_event_blocking` | `fn recv_event_blocking(&self) -> Result<DeepLinkEvent>` | Native only |
+| `try_recv` | `fn try_recv(&self) -> Option<String>` | `None` when empty *or* closed (indistinguishable) |
+| `try_recv_event` | `fn try_recv_event(&self) -> Option<DeepLinkEvent>` | Same semantics |
+| `drain` | `fn drain(&self) -> Vec<String>` | All currently queued URLs, in order |
+| `drain_events` | `fn drain_events(&self) -> Vec<DeepLinkEvent>` | Same for full events |
+| `into_stream` | `fn into_stream(self) -> DeepLinkStream` | Requires the `stream` feature |
+
+## DeepLinkEvent and Source
+
+| Field / method | Type or signature | Description |
+| --- | --- | --- |
+| `url` | `String` | The raw URL string as received |
+| `source` | `Source` | Where the event came from |
+| `new` | `fn new(url: impl Into<String>, source: Source) -> Self` | Constructor |
+| `parse_url` | `fn parse_url(&self) -> Result<url::Url>` | Lazy parse; `Error::MalformedUrl` on failure |
+
+| `Source` variant | Meaning |
+| --- | --- |
+| `System` *(default)* | Delivered by the OS while already running — registry hand-off (Windows), Apple event (macOS), forwarded hand-off, mobile intake |
+| `CommandLine` | Found on this process's command line — cold start on Windows and Linux, macOS `GURL` events (see [event sources](/explanation/event-sources/)) |
+
+## DeepLinkStream
+
+With the `stream` feature, `into_stream` converts a handle into `DeepLinkStream`, which implements `futures_core::Stream` with `Item = String`. The stream terminates when the channel shuts down.
+
+## Next steps
+
+- <LinkCard title="Error reference" href="/reference/errors/" description="Every Error variant and when it surfaces." />
+- <LinkCard title="Platform reference" href="/reference/platform/" description="OS registration and the global hub." />
+
+
+---
+
+---
+title: Error Reference
+description: Every variant of nexum_core::Error with its exact display message and the situations that produce it.
+type: reference
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+The whole nexum stack shares one error type: `nexum_core::Error`, built with `thiserror`. The type alias `Result<T, E = Error>` is re-exported alongside it, and `Error` is `Send + Sync + 'static` so it crosses threads and tasks freely.
+
+| Variant | Display message | Produced by |
+| --- | --- | --- |
+| `NoSchemes` | `at least one URL scheme must be configured` | `Config::validate` or `ConfigBuilder::build` with zero schemes |
+| `InvalidScheme(String)` | `` `{0}` is not a valid URL scheme (RFC 3986: ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )) `` | Scheme fails the RFC 3986 grammar check |
+| `InvalidHost(String)` | `` `{0}` is not a valid app-link host `` | App link with an empty host |
+| `HubAlreadySet` | `the deep-link hub is already initialized for this process` | `set_hub` or `init`/`init_with` called a second time (including adapters' internal setup) |
+| `HubNotSet` | `no deep-link hub is initialized yet; call nexum_platform::init first` | Platform operation (`push_url`, `single_instance::acquire`, mobile intake) before initialization |
+| `HubClosed` | `the deep-link channel has been shut down` | Blocking receive after every sender and receiver dropped |
+| `QueueFull` | `the bounded deep-link queue is full` | `try_push_*` on a bounded hub at capacity |
+| `MalformedUrl(String, url::ParseError)` | `` `{0}` is not a valid URL: {1} `` | Lazy parse failure via `DeepLinkEvent::parse_url` or `recv_url` items |
+| `Platform(String)` | `platform registration failed: {0}` | Backend-specific failures: `xdg-mime` non-zero exit, main-thread violation on macOS, single-instance protocol errors |
+| `Io(std::io::Error)` | *(transparent)* | Filesystem and socket I/O underneath registration |
+
+## Matching examples
+
+Error variants are plain enum variants, so `matches!` is the idiomatic guard:
+
+<Code lang="rust" code={`use nexum_core::{Config, Error};
+
+let err = Config::builder().build().expect_err("no schemes");
+assert!(matches!(err, Error::NoSchemes));
+
+let err = Config::validate_scheme("1bad").expect_err("bad scheme");
+assert!(matches!(err, Error::InvalidScheme(_)));`} />
+
+## Recovery guidance
+
+- `NoSchemes`, `InvalidScheme`, `InvalidHost` are configuration bugs — fail fast at startup.
+- `HubAlreadySet` indicates double initialization; adapters surface the same variant when their own setup runs twice.
+- `HubNotSet` means an ordering mistake: initialize the hub before any push, intake or `acquire` call.
+- `HubClosed` and `QueueFull` are *flow control*, not faults: consumers stopped or backpressure engaged. Handle them in the retry/shutdown logic of your consumer loop.
+- `Platform` wraps the largest class of environment problems — missing `xdg-mime`, a non-main-thread registration on macOS, or single-instance protocol mismatches. The inner string names the exact cause and is stable enough to log verbatim.
+
+<Aside type="tip">
+`Io` is transparent (`#[from]`), so `?` converts a `std::io::Error` into `Error` automatically in fallible glue code.
+</Aside>
+
+- <LinkCard title="Core reference" href="/reference/core/" description="Config and hub APIs that produce these errors." />
+- <LinkCard title="Platform reference" href="/reference/platform/" description="Registration functions and their error behavior." />
+
+
+---
+
+---
+title: The deep_link Attribute
+description: Syntax, accepted keys, generated code and constraints of the nexum-macros bootstrap attribute.
+type: reference
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+`#[deep_link]` is the attribute macro exported by `nexum-macros` (and re-exported by the `nexum` facade). It rewrites a `fn main` so that deep-link registration happens **before** the first statement of the body executes, binding the consumer handle to a generated `_nexum_handle` binding.
+
+## Syntax
+
+| Key | Type | Required | Effect |
+| --- | --- | --- | --- |
+| `schemes` | array of string literals, or a single string literal | **Yes** | One `Config::builder().scheme(...)` call per entry |
+| `app_links` | array of string literals, or a single string literal | No | One `AppLink::new(host, [])` per entry (no path prefixes) |
+| `icon` | single string literal | No | Passed to `.icon_path(...)` |
+
+Unknown keys, bare values, or non-string values fail to compile with a targeted message — for example ``unknown key `foo`; expected `schemes`, `app_links` or `icon` ``.
+
+<Code lang="rust" code={`use nexum::deep_link;
+
+#[deep_link(schemes = ["myapp", "myapp-alt"], icon = "/icons/app.png")]
+fn main() {
+    if let Ok(url) = _nexum_handle.recv_blocking() {
+                    println!("opened {url}");
+    }
+}`} />
+
+## Generated code
+
+The macro leaves your attributes, visibility and signature untouched and prepends one binding to the body:
+
+<Code lang="rust" code={`let _nexum_handle = {
+    let __nexum_config = ::nexum::Config::builder()
+                    .scheme("myapp")
+                    .build()
+                    .expect("nexum: invalid deep-link configuration");
+    ::nexum::platform::init(&__nexum_config)
+                    .expect("nexum: deep-link initialization failed")
+};
+// ...your original statements...`} />
+
+## Constraints
+
+- **`fn main` only.** Applying the attribute to any other function is a compile error: `` `#[deep_link]` can only be applied to `fn main` ``.
+- **Requires the facade.** The expansion references `::nexum::` absolute paths, so the macro only works when the `nexum` facade crate is a dependency — not with `nexum-macros` alone.
+- **Panics on failure by design.** Invalid configuration and failed registration both panic with descriptive messages. If your app must recover — for example to show a dialog — call `nexum::platform::init` directly and handle the `Result` instead of using the attribute.
+- **Registration timing.** Everything inside the generated block runs before your first statement, which also satisfies macOS's main-thread requirement for registration.
+
+<Aside type="tip">
+The generated `_nexum_handle` is a regular `DeepLinkHandle`: every consumption pattern from the [core reference](/reference/core/) — blocking, async, stream, bounded — applies unchanged.
+</Aside>
+
+## Next steps
+
+- <LinkCard title="Facade reference" href="/reference/nexum/" description="What the nexum crate re-exports alongside the macro." />
+- <LinkCard title="Build your first deep link" href="/tutorials/getting-started/" description="The attribute in a complete, runnable walkthrough." />
+
+
+---
+
+---
+title: nexum (Facade)
+description: The one-dependency facade — re-exports of core primitives, the platform module and the deep_link bootstrap attribute.
+type: reference
+---
+
+import { Code, LinkCard } from '@astrojs/starlight/components';
+
+The `nexum` crate is a convenience facade: it pulls together the three building blocks — core primitives, OS platform layer and the bootstrap macro — so a desktop application needs exactly one dependency. Everything on this page is a re-export; the detailed behavior lives in the linked component references.
+
+## Re-exports
+
+| Item | Source | Description |
+| --- | --- | --- |
+| `Config`, `ConfigBuilder`, `AppLink` | `nexum-core` | Declarative configuration of schemes, app links and icon |
+| `DeepLinkHub` | `nexum-core` | Producer side of the event channel |
+| `DeepLinkHandle` | `nexum-core` | Consumer side (blocking, async, polling, stream) |
+| `DeepLinkEvent`, `Source` | `nexum-core` | The event payload and its origin |
+| `Error`, `Result` | `nexum-core` | The shared error type |
+| `DeepLinkStream` | `nexum-core` *(only with the `stream` feature)* | `Stream<Item = String>` over the handle |
+| `deep_link` | `nexum-macros` | `#[deep_link(schemes = ["myapp"])]` bootstrap attribute |
+| `platform` | `nexum-platform` | Whole module alias: `init`, `register`, `plist`, `mobile`, … |
+| `hub`, `set_hub`, `push_url`, `push_launch_url`, `register`, `init`, `init_with` | `nexum-platform` | Flat re-exports of the root platform functions |
+| `validate_bundle` | `nexum-platform` *(macOS targets only)* | Plist validator for the running app bundle |
+
+## Feature flags
+
+| Feature | Effect |
+| --- | --- |
+| `stream` | Enables `nexum-core/stream` and re-exports `DeepLinkStream` |
+| `single-instance` | Enables `nexum-platform/single-instance`, exposing `nexum::platform::single_instance` |
+
+## Usage
+
+The intended shape is one attribute on `main`:
+
+<Code lang="rust" code={`use nexum::deep_link;
+
+#[deep_link(schemes = ["myapp"], icon = "/icons/app.png")]
+fn main() {
+    if let Ok(url) = _nexum_handle.recv_blocking() {
+                    println!("opened {url}");
+    }
+}`} />
+
+Prefer explicit control? The attribute is optional — `nexum::platform::init(&config)` returns the same `DeepLinkHandle` without any macro:
+
+<Code lang="rust" code={`use nexum::{Config, platform};
+
+let config = Config::builder().scheme("myapp").build().expect("valid config");
+let handle = platform::init(&config).expect("registration failed");`} />
+
+## Next steps
+
+- <LinkCard title="Core reference" href="/reference/core/" description="Config, DeepLinkHub, DeepLinkHandle, DeepLinkEvent signatures." />
+- <LinkCard title="Platform reference" href="/reference/platform/" description="init, register, plist, mobile and single-instance APIs." />
+- <LinkCard title="Macro reference" href="/reference/macros/" description="The #[deep_link] attribute syntax and expansion." />
+
+
+---
+
+---
+title: nexum-platform Reference
+description: OS registration, the process-global hub, plist validation, mobile intake and single-instance hand-off — signatures and platform behavior.
+type: reference
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+`nexum-platform` turns a `Config` into an OS-registered protocol handler and hosts the process-global hub that platform relays feed. Desktop backends are cfg-gated per target; `plist` and `mobile` compile everywhere; `single_instance` requires its feature flag on Unix or Windows.
+
+## Root functions
+
+| Function | Signature | Description |
+| --- | --- | --- |
+| `hub` | `fn hub() -> Option<&'static DeepLinkHub>` | The process-global hub, if initialized |
+| `set_hub` | `fn set_hub(hub: DeepLinkHub) -> Result<()>` | Installs a custom global hub; `HubAlreadySet` on repeat calls |
+| `push_url` | `fn push_url(url: impl Into<String>) -> Result<()>` | Pushes into the global hub with `Source::System`; `HubNotSet` before init |
+| `push_launch_url` | `fn push_launch_url(url: impl Into<String>) -> Result<()>` | Same, with `Source::CommandLine` |
+| `register` | `fn register(config: &Config) -> Result<()>` | Runs the platform backend, then relays cold-start URLs from `std::env::args().skip(1)`. On macOS it panics unless called from the main thread |
+| `init` | `fn init(config: &Config) -> Result<DeepLinkHandle>` | `init_with(config, DeepLinkHub::new())` |
+| `init_with` | `fn init_with(config: &Config, hub: DeepLinkHub) -> Result<DeepLinkHandle>` | Installs a specific hub (e.g. bounded) and registers; returns a handle to it |
+| `validate_bundle` | `fn validate_bundle(config: &Config) -> Result<Vec<String>>` | macOS only (re-export from the backend): schemes missing from the running bundle's `Info.plist` |
+
+`init` and `init_with` fail with `HubAlreadySet` when called twice — including indirectly, once an adapter has already initialized.
+
+## Platform backends
+
+| Backend | Registration writes | Runtime delivery | Cold start |
+| --- | --- | --- | --- |
+| Windows | Per scheme under `HKCU\Software\Classes`: protocol marker, `DefaultIcon` (`icon_path` or exe), `shell\open\command` = `"{exe}" "%1"` | OS launches a second process; not a live event source | URL extracted from `argv`, pushed as `Source::CommandLine` |
+| macOS | Nothing on disk — installs a `GURL` Apple-event delegate via `NSAppleEventManager` (main thread required) | Delegate pushes URLs into the hub via `push_launch_url` → `Source::CommandLine` | Same Apple-event path after delegate installation |
+| Linux | `{data_local_dir}/applications/{app}.desktop` with `Exec`, `Icon`, `MimeType=x-scheme-handler/...`, then `xdg-mime default` per scheme | OS launches a second process | URL extracted from `argv`, pushed as `Source::CommandLine` |
+| Android / iOS | Declarative generators (`mobile` + `plist` modules) | Framework glue calls the intake functions | Same intake path |
+
+## plist module
+
+| Function | Signature | Description |
+| --- | --- | --- |
+| `url_types_xml` | `fn url_types_xml(config: &Config) -> String` | Renders the full `CFBundleURLTypes` XML block for the configured schemes |
+| `missing_schemes` | `fn missing_schemes(plist_xml: &str, config: &Config) -> Vec<String>` | Configured schemes absent from the given plist XML; case-insensitive; tolerant of arbitrary or broken formatting (a broken plist reports all schemes missing) |
+
+## mobile module
+
+| Function | Signature | Target | Description |
+| --- | --- | --- | --- |
+| `android_manifest_intent_filter` | `fn android_manifest_intent_filter(config: &Config) -> String` | All targets | Renders an `<intent-filter>` (VIEW, DEFAULT + BROWSABLE, one `<data>` per scheme) |
+| `push_intent_url` | `fn push_intent_url(url: impl Into<String>) -> Result<()>` | `target_os = "android"` | Feeds `Intent.getDataString()` URLs from JNI glue into the hub as `Source::System` |
+| `push_open_urls` | `fn push_open_urls<I>(urls: I) -> Result<()> where I: IntoIterator, I::Item: Into<String>` | `target_os = "ios"` | Feeds `openURLContexts`/`open URL:` delegate URLs as `Source::System` |
+
+Both intake functions return `Error::HubNotSet` until a hub is installed.
+
+## single_instance module
+
+Available with the `single-instance` feature on Unix and Windows targets — full behavior in the [hand-off guide](/guides/single-instance/).
+
+| Item | Kind | Description |
+| --- | --- | --- |
+| `acquire` | `fn acquire(config: &Config, urls: &[String]) -> Result<Acquisition>` | After hub init: become primary or hand off to the running instance |
+| `Acquisition::Primary(PrimaryGuard)` | enum variant | This process owns the socket; guard must live for the process lifetime |
+| `Acquisition::HandedOff` | enum variant | `HandedOff { forwarded: usize }`; URLs delivered, caller should exit |
+| `PrimaryGuard` | struct | Dropping closes the socket (and removes the Unix socket file) |
+
+## Next steps
+
+- <LinkCard title="Error reference" href="/reference/errors/" description="The shared Error type all these functions return." />
+- <LinkCard title="Event sources explained" href="/explanation/event-sources/" description="System versus CommandLine semantics per platform." />
+
+
+---
+
+---
+title: Build Your First Deep Link
+description: Walk through creating a small Rust app that registers a custom URL scheme and receives deep-link events with nexum.
+type: tutorial
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+In this tutorial you build a complete Rust program that owns the `myapp://` URL scheme. You register the scheme with your operating system, launch the app, open a `myapp://` URL from a terminal or browser, and watch the URL arrive inside your process. Along the way you meet the three pieces every nexum app uses: a `Config`, OS registration, and a `DeepLinkHandle`.
+
+## Prerequisites
+
+- Rust 1.85 or newer (nexum uses edition 2024). Check with `rustc --version`.
+- A terminal on Windows, macOS or Linux.
+- Roughly ten minutes.
+
+## Step 1 — Create a project
+
+Create a new binary crate and change into it:
+
+<Code lang="bash" code={`cargo new nexum-demo
+cd nexum-demo`} />
+
+## Step 2 — Add the nexum facade
+
+The `nexum` facade is the one-dependency path: it re-exports `Config`, the platform layer, and the `#[deep_link]` attribute.
+
+<Code lang="bash" code={`cargo add nexum`} />
+
+Your `Cargo.toml` gains:
+
+<Code lang="toml" code={`[dependencies]
+nexum = "0.3"`} />
+
+## Step 3 — Write the bootstrap
+
+Replace the contents of `src/main.rs` with:
+
+<Code lang="rust" code={`use nexum::deep_link;
+
+#[deep_link(schemes = ["myapp"])]
+fn main() {
+    // Registration happens before this body runs; the consumer
+    // handle is bound to \`_nexum_handle\`.
+    if let Ok(url) = _nexum_handle.recv_blocking() {
+                    println!("opened {url}");
+    }
+}`} />
+
+The `#[deep_link]` attribute rewrites your `main` so that nexum builds a validated `Config` and calls `nexum::platform::init` *before* your first statement executes. The returned `DeepLinkHandle` is bound to the generated `_nexum_handle` binding, which you then use to receive URLs.
+
+<Aside type="danger">
+The generated code panics if the configuration is invalid or the OS registration fails. For fallible control — for example, to show an error dialog — use `nexum::platform::init` directly instead of the attribute.
+</Aside>
+
+## Step 4 — Run the app
+
+Start the program and leave it running:
+
+<Code lang="bash" code={`cargo run`} />
+
+On first run, nexum registers `myapp://` for your user:
+
+- **Windows** — writes `HKCU\Software\Classes\myapp` with a `shell\open\command` entry pointing at the current executable.
+- **macOS** — installs an Apple-event handler for the `GURL` event class. Packaged apps also need the scheme declared in `Info.plist`, which you can generate with `nexum::platform::plist::url_types_xml`.
+- **Linux** — writes a `.desktop` file into your user applications directory and calls `xdg-mime default` to bind the scheme.
+
+## Step 5 — Trigger the deep link
+
+With the app still running, open a `myapp://` URL from another terminal:
+
+<Code lang="bash" code={`# macOS
+open "myapp://open/settings"
+
+# Linux
+xdg-open "myapp://open/settings"
+
+# Windows (PowerShell)
+Start-Process "myapp://open/settings"`} />
+
+The operating system looks up the handler and launches — or, on Windows and Linux, re-launches — the registered executable with the URL. Nexum detects the URL among the process arguments and relays it into your app.
+
+Where the output appears depends on your platform:
+
+- **macOS** — the URL travels to the *running* instance as an Apple event, and the first app prints `opened myapp://open/settings`.
+- **Windows and Linux** — the OS starts a *second* instance with the URL on its command line; that second process reaches the `println!` in its own terminal. To forward the URL into the original process and exit the second instance, enable the single-instance feature described in [Single-instance hand-off](/guides/single-instance/).
+
+## What you built
+
+You now have a Rust program that owns a URL scheme end to end: the OS launches it for `myapp://` URLs, nexum extracts the URL from the launch context, and `recv_blocking()` hands it to your code as a `String`.
+
+<Aside type="tip">
+Every event is a `DeepLinkEvent` with a `url` and a `source`. Call `recv_event_blocking()` instead of `recv_blocking()` to see where an event came from — runtime hand-offs and command-line cold starts are distinguishable via `Source`.
+</Aside>
+
+## Next steps
+
+Adapt the same workflow to your UI framework of choice, or dive into the primitives:
+
+- <LinkCard title="Choosing an adapter" href="/guides/choosing-an-adapter/" description="Compare the Floem, Xilem, Dioxus, Leptos and GPUI integrations." />
+- <LinkCard title="Platform setup guides" href="/guides/macos-setup/" description="Declare your scheme in Info.plist, the Windows registry or a .desktop file." />
+- <LinkCard title="Core API reference" href="/reference/core/" description="Config, DeepLinkHub, DeepLinkHandle and DeepLinkEvent signatures." />

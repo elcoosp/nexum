@@ -4,7 +4,7 @@ description: Compare nexum's five UI-framework adapters and pick the one that ma
 type: how-to
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Code, LinkCard } from '@astrojs/starlight/components';
 
 All five adapters wrap the same core: each one calls `nexum_platform::init` under the hood, then bridges incoming `DeepLinkEvent`s into the idioms of its framework. The differences are in what the adapter hands back to you — a raw handle, a signal, a view wrapper, or a one-call launcher. Use this guide to match the integration style to your framework; the linked reference pages carry the exact signatures.
 
@@ -23,57 +23,47 @@ All five adapters wrap the same core: each one calls `nexum_platform::init` unde
 
 ### Floem
 
-```rust
-let config = Config::builder().scheme("myapp").build().expect("valid config");
-let url_signal = signal(&config); // ReadSignal<Option<String>>
-```
+<Code lang="rust" code={`let config = Config::builder().scheme("myapp").build().expect("valid config");
+let url_signal = signal(&config); // ReadSignal<Option<String>>`} />
 
 The `signal` helper spawns a background thread named `nexum-floem` that blocks on the handle and feeds Floem's reactive runtime through `create_signal_from_channel`. The UI thread wakes only when a URL arrives.
 
 ### Xilem
 
-```rust
-nexum_xilem::setup(&config).expect("deep-link setup");
+<Code lang="rust" code={`nexum_xilem::setup(&config).expect("deep-link setup");
 // in your app logic:
 let content = with_deep_links(base_view, |state: &mut AppState, url| {
     state.last_url = Some(url);
-});
-```
+});`} />
 
 `with_deep_links` forks a Xilem task onto your view; the callback runs on the app thread like any other Xilem event callback.
 
 ### Dioxus
 
-```rust
-#[component]
+<Code lang="rust" code={`#[component]
 fn App() -> Element {
     let deep_link = use_deep_link(); // Signal<Option<String>>
     rsx! { p { "Last deep link: {deep_link:?}" } }
 }
 
 // one-call launch wires tao's Opened events into the hub:
-launch_desktop(&nexum_config, desktop_config, app);
-```
+launch_desktop(&nexum_config, desktop_config, app);`} />
 
 `launch_desktop` performs setup, attaches the tao `Event::Opened` bridge, and launches your app — `use_deep_link()` then works like any other hook.
 
 ### Leptos
 
-```rust
-// native: one call registers and returns a reactive signal
-let url_signal = signal(&config); // RwSignal<Option<String>>
-```
+<Code lang="rust" code={`// native: one call registers and returns a reactive signal
+let url_signal = signal(&config); // RwSignal<Option<String>>`} />
 
 In the browser (where scheme registration is impossible), build your own hub and call `signal_from_handle(&hub.handle())` — it never touches the OS and works under `wasm32-unknown-unknown`.
 
 ### GPUI
 
-```rust
-let handle = setup_deep_links(&app, &config)?;
+<Code lang="rust" code={`let handle = setup_deep_links(&app, &config)?;
 attach_deep_link(handle, view.clone(), cx, |view, _cx, url| {
     view.set_url(url);
-});
-```
+});`} />
 
 `setup_deep_links` installs GPUI's `on_open_urls` callback *before* OS registration so early events are not lost, and `attach_deep_link` spawns a task that wakes your entity for every URL.
 

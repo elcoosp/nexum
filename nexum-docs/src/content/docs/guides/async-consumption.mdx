@@ -4,18 +4,16 @@ description: Use async receive methods, the stream feature, and polling APIs to 
 type: how-to
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 `DeepLinkHandle` offers four consumption styles: blocking, async-await, polling, and (with the `stream` feature) a `Stream`. All async methods run on any executor because the transport underneath is `async-channel` — there is no tokio dependency and no runtime requirement.
 
 ## Async await
 
-```rust
-// native or wasm, any executor:
+<Code lang="rust" code={`// native or wasm, any executor:
 while let Some(url) = handle.recv().await {
     println!("received {url}");
-}
-```
+}`} />
 
 | Method | Signature shape | Notes |
 | --- | --- | --- |
@@ -29,19 +27,15 @@ while let Some(url) = handle.recv().await {
 
 Enable the feature and convert the handle:
 
-```toml
-[dependencies]
-nexum = { version = "0.3", features = ["stream"] }
-```
+<Code lang="toml" code={`[dependencies]
+nexum = { version = "0.3", features = ["stream"] }`} />
 
-```rust
-use futures::StreamExt;
+<Code lang="rust" code={`use futures::StreamExt;
 
 let mut stream = handle.into_stream(); // Stream<Item = String>
 while let Some(url) = stream.next().await {
     println!("received {url}");
-}
-```
+}`} />
 
 `DeepLinkStream` yields raw URL strings and terminates when the channel shuts down, so it composes with the usual stream adaptors — `filter_map`, `timeout`, `select` — from `futures` or tokio-stream.
 
@@ -49,12 +43,10 @@ while let Some(url) = stream.next().await {
 
 For event-loop integrations that cannot await, the handle exposes non-blocking accessors:
 
-```rust
-if let Some(url) = handle.try_recv() {
+<Code lang="rust" code={`if let Some(url) = handle.try_recv() {
     // one URL if available
 }
-let backlog = handle.drain(); // all currently queued URLs, in order
-```
+let backlog = handle.drain(); // all currently queued URLs, in order`} />
 
 `try_recv` returns `None` both when the queue is empty *and* after shutdown — the two states are deliberately indistinguishable. Use `recv_event_blocking` when you need to tell them apart.
 
@@ -63,8 +55,9 @@ let backlog = handle.drain(); // all currently queued URLs, in order
 - **wasm** — the blocking methods (`recv_blocking`, `recv_event_blocking`) are compiled out on wasm targets; the async and polling APIs are always available. On wasm a bounded hub *drops* instead of blocking on full pushes.
 - **Threaded adapters** — Floem's `signal()` helper is the reference pattern for bridging into a framework: a dedicated thread calls `recv_blocking` and forwards into the reactive runtime. Copy that shape when your framework has no adapter yet.
 
-> [!TIP]
-> Cloning a `DeepLinkHandle` gives you another independent consumer; the hub delivers each event to exactly one consumer, round-robin across live receivers. That is load-sharing, not broadcasting — for fan-out, subscribe with multiple hubs or demultiplex yourself.
+<Aside type="tip">
+Cloning a `DeepLinkHandle` gives you another independent consumer; the hub delivers each event to exactly one consumer, round-robin across live receivers. That is load-sharing, not broadcasting — for fan-out, subscribe with multiple hubs or demultiplex yourself.
+</Aside>
 
 ## Next steps
 

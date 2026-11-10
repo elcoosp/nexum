@@ -4,7 +4,7 @@ description: The one-dependency facade — re-exports of core primitives, the pl
 type: reference
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Code, LinkCard } from '@astrojs/starlight/components';
 
 The `nexum` crate is a convenience facade: it pulls together the three building blocks — core primitives, OS platform layer and the bootstrap macro — so a desktop application needs exactly one dependency. Everything on this page is a re-export; the detailed behavior lives in the linked component references.
 
@@ -34,25 +34,21 @@ The `nexum` crate is a convenience facade: it pulls together the three building 
 
 The intended shape is one attribute on `main`:
 
-```rust
-use nexum::deep_link;
+<Code lang="rust" code={`use nexum::deep_link;
 
 #[deep_link(schemes = ["myapp"], icon = "/icons/app.png")]
 fn main() {
     if let Ok(url) = _nexum_handle.recv_blocking() {
-        println!("opened {url}");
+                    println!("opened {url}");
     }
-}
-```
+}`} />
 
 Prefer explicit control? The attribute is optional — `nexum::platform::init(&config)` returns the same `DeepLinkHandle` without any macro:
 
-```rust
-use nexum::{Config, platform};
+<Code lang="rust" code={`use nexum::{Config, platform};
 
 let config = Config::builder().scheme("myapp").build().expect("valid config");
-let handle = platform::init(&config).expect("registration failed");
-```
+let handle = platform::init(&config).expect("registration failed");`} />
 
 ## Next steps
 

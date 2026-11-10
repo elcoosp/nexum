@@ -4,7 +4,7 @@ description: Every variant of nexum_core::Error with its exact display message a
 type: reference
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 The whole nexum stack shares one error type: `nexum_core::Error`, built with `thiserror`. The type alias `Result<T, E = Error>` is re-exported alongside it, and `Error` is `Send + Sync + 'static` so it crosses threads and tasks freely.
 
@@ -25,15 +25,13 @@ The whole nexum stack shares one error type: `nexum_core::Error`, built with `th
 
 Error variants are plain enum variants, so `matches!` is the idiomatic guard:
 
-```rust
-use nexum_core::{Config, Error};
+<Code lang="rust" code={`use nexum_core::{Config, Error};
 
 let err = Config::builder().build().expect_err("no schemes");
 assert!(matches!(err, Error::NoSchemes));
 
 let err = Config::validate_scheme("1bad").expect_err("bad scheme");
-assert!(matches!(err, Error::InvalidScheme(_)));
-```
+assert!(matches!(err, Error::InvalidScheme(_)));`} />
 
 ## Recovery guidance
 
@@ -43,8 +41,9 @@ assert!(matches!(err, Error::InvalidScheme(_)));
 - `HubClosed` and `QueueFull` are *flow control*, not faults: consumers stopped or backpressure engaged. Handle them in the retry/shutdown logic of your consumer loop.
 - `Platform` wraps the largest class of environment problems — missing `xdg-mime`, a non-main-thread registration on macOS, or single-instance protocol mismatches. The inner string names the exact cause and is stable enough to log verbatim.
 
-> [!TIP]
-> `Io` is transparent (`#[from]`), so `?` converts a `std::io::Error` into `Error` automatically in fallible glue code.
+<Aside type="tip">
+`Io` is transparent (`#[from]`), so `?` converts a `std::io::Error` into `Error` automatically in fallible glue code.
+</Aside>
 
 - <LinkCard title="Core reference" href="/reference/core/" description="Config and hub APIs that produce these errors." />
 - <LinkCard title="Platform reference" href="/reference/platform/" description="Registration functions and their error behavior." />

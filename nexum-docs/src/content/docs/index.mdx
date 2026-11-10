@@ -18,7 +18,7 @@ hero:
                   variant: minimal
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Card, CardGrid, LinkButton } from '@astrojs/starlight/components';
 import { Image } from 'astro:assets';
 import heroLogo from '../../assets/hero-logo.png';
 
@@ -42,6 +42,8 @@ The workspace is organized so you depend on exactly what you need: [`nexum-core`
                 Explanations of the producer-consumer architecture, event sources, and the engineering principles behind the crates.
         </Card>
 </CardGrid>
+
+<LinkButton href="/tutorials/getting-started/" icon="right-arrow">Start the tutorial</LinkButton>
 
 ## The ecosystem at a glance
 

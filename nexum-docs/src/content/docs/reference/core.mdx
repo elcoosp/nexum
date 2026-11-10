@@ -4,7 +4,7 @@ description: Config, ConfigBuilder, AppLink, DeepLinkHub, DeepLinkHandle, DeepLi
 type: reference
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Code, LinkCard } from '@astrojs/starlight/components';
 
 `nexum-core` holds everything that does not touch the operating system: configuration, the producer-consumer event channel, and the event type. All items are re-exported flat from the crate root, and the crate compiles with `#![forbid(unsafe_code)]`. The transport is `async-channel`, so every async API works on any executor — and on wasm.
 
@@ -66,8 +66,7 @@ The hub owns the event queue. It is a multi-producer, **multi-consumer** channel
 | `try_push_event` | `fn try_push_event(&self, event: DeepLinkEvent) -> Result<(), Error>` | Non-blocking variant |
 | `handle` | `fn handle(&self) -> DeepLinkHandle` | Creates an additional consumer |
 
-```rust
-use nexum_core::{Config, DeepLinkHub, Source};
+<Code lang="rust" code={`use nexum_core::{Config, DeepLinkHub, Source};
 
 let config = Config::new(["myapp"]).validate().expect("valid config");
 let hub = DeepLinkHub::new();
@@ -78,8 +77,7 @@ assert_eq!(handle.try_recv().as_deref(), Some("myapp://open/settings"));
 
 hub.push_launch_url("myapp://open/doc/42");
 let event = handle.recv_event_blocking().expect("event");
-assert_eq!(event.source, Source::CommandLine);
-```
+assert_eq!(event.source, Source::CommandLine);`} />
 
 ## DeepLinkHandle — the consumer
 

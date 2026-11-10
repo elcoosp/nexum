@@ -4,7 +4,7 @@ description: Dioxus desktop adapter — launch_desktop, the use_deep_link hook a
 type: reference
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 `nexum-dioxus` integrates deep links into Dioxus desktop applications. Besides the usual core and platform re-exports, it re-exports `dioxus::LaunchBuilder` and the desktop config types (`dioxus_desktop::Config` as `DesktopConfig`, `LogicalSize`, `WindowBuilder`) so a deep-link app needs no extra imports for launching.
 
@@ -20,28 +20,24 @@ import { LinkCard } from '@astrojs/starlight/components';
 
 ## The one-call path
 
-```rust
-let nexum_config = Config::builder().scheme("myapp").build().expect("valid config");
+<Code lang="rust" code={`let nexum_config = Config::builder().scheme("myapp").build().expect("valid config");
 
 let desktop_config = DesktopConfig::new()
     .with_window(WindowBuilder::new().with_title("Deep Link Demo"));
 
-launch_desktop(&nexum_config, desktop_config, app);
-```
+launch_desktop(&nexum_config, desktop_config, app);`} />
 
 `launch_desktop` runs `setup` (**panicking** on failure with `nexum-dioxus: deep-link setup failed`), wraps the desktop config with `with_deep_link_handler`, and launches through `LaunchBuilder`. Note the `app` parameter is a plain function pointer `fn() -> Element`.
 
 ## The hook
 
-```rust
-#[component]
+<Code lang="rust" code={`#[component]
 fn App() -> Element {
     let deep_link = use_deep_link();
     rsx! {
-        p { "Last deep link: {deep_link:?}" }
+                    p { "Last deep link: {deep_link:?}" }
     }
-}
-```
+}`} />
 
 The signal starts as `None` and is replaced by each arriving URL. A `use_future` internally awaits `handle.recv()` and writes into the signal.
 
@@ -53,8 +49,9 @@ The signal starts as `None` and is replaced by each arriving URL. A `use_future`
 - Push errors are deliberately ignored (`.ok()`): after hub shutdown the event stream stops contributing.
 - Cold starts on Windows and Linux still arrive via the command-line relay inside `setup` — before your components render — so the hook can already hold the launch URL on first paint.
 
-> [!CAUTION]
-> The adapter pins `tao 0.34.8` to match `dioxus-desktop`'s requirement; both crates must see the identical event enum. Cargo resolves this automatically when versions align — do not override tao in your own manifest.
+<Aside type="danger">
+The adapter pins `tao 0.34.8` to match `dioxus-desktop`'s requirement; both crates must see the identical event enum. Cargo resolves this automatically when versions align — do not override tao in your own manifest.
+</Aside>
 
 ## Next steps
 

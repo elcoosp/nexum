@@ -4,14 +4,13 @@ description: How the nexum workspace is layered, how events flow from the operat
 type: explanation
 ---
 
-import { FileTree, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, FileTree, LinkCard } from '@astrojs/starlight/components';
 
 Nexum solves one problem — getting a URL from the operating system into your Rust process — and it solves it by splitting the problem into layers with minimal dependencies between them. Understanding the layering explains almost every API decision you meet in the reference pages.
 
 ## The workspace layout
 
-```jsx
-<FileTree>
+<Code lang="jsx" code={`<FileTree>
 - nexum/            (facade: re-exports + the deep_link attribute)
 - nexum-macros/     (proc-macro: #[deep_link] bootstrap)
 - nexum-core/       (Config, DeepLinkHub, DeepLinkHandle, DeepLinkEvent)
@@ -22,8 +21,7 @@ Nexum solves one problem — getting a URL from the operating system into your R
 - nexum-leptos/     (adapter: Leptos, wasm-capable)
 - nexum-gpui/       (adapter: GPUI — outside the workspace, tracks Zed)
 - examples/         (one runnable app per framework)
-</FileTree>
-```
+</FileTree>`} />
 
 Only the bottom of the stack knows about operating systems. `nexum-core` compiles with `#![forbid(unsafe_code)]` and no platform code at all; `nexum-platform` contains the three cfg-gated desktop backends plus portable generators; the adapters contain nothing but bridge logic into their framework's event model.
 
@@ -51,8 +49,9 @@ Because the adapter side of the contract reduces to "poll a handle and forward s
 
 Two features extend the pipeline without changing it. **Bounded mode** (`DeepLinkHub::bounded(n)` installed via `init_with`) turns the queue into a backpressure point: producers block (native) or drop (wasm) when the consumer falls behind. **Single-instance hand-off** (`single-instance` feature) adds a local socket so a second launch forwards its command-line URLs into the primary's hub — the second process sees `HandedOff` and exits. Neither feature requires touching your consumption code; both operate entirely on the producer side of the pipeline.
 
-> [!TIP]
-> The example apps in the repository are the executable version of this page: each `examples/*-basic` crate wires one adapter end to end, and the leptos example demonstrates the hub-owned browser variant.
+<Aside type="tip">
+The example apps in the repository are the executable version of this page: each `examples/*-basic` crate wires one adapter end to end, and the leptos example demonstrates the hub-owned browser variant.
+</Aside>
 
 - <LinkCard title="Core reference" href="/reference/core/" description="The hub, handle and event types in detail." />
 - <LinkCard title="Event sources explained" href="/explanation/event-sources/" description="How producers label the URLs they push." />

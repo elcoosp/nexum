@@ -4,7 +4,7 @@ description: Declare your URL schemes in Info.plist, validate the bundle at runt
 type: how-to
 ---
 
-import { LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 On macOS, nexum performs two distinct jobs: at **runtime** it installs an Apple-event handler that receives `GURL` events for URLs the OS dispatches to your *running* app, and at **packaging** time you must declare the schemes in the app bundle's `Info.plist`. The library never edits your plist for you — instead it generates the XML you need and verifies that the built bundle matches your `Config`.
 
@@ -12,21 +12,17 @@ On macOS, nexum performs two distinct jobs: at **runtime** it installs an Apple-
 
 Add a `CFBundleURLTypes` entry listing every scheme from your `Config`. Generate the exact XML nexum expects with `url_types_xml`, which renders the full `<key>CFBundleURLTypes</key><array>…</array>` block:
 
-```rust
-use nexum_core::Config;
+<Code lang="rust" code={`use nexum_core::Config;
 use nexum_platform::plist;
 
 let config = Config::builder().scheme("myapp").build().expect("valid config");
-println!("{}", plist::url_types_xml(&config));
-```
+println!("{}", plist::url_types_xml(&config));`} />
 
 If you package with `cargo-bundle`, the `[package.metadata.bundle]` `osx_url_schemes` key produces the same declaration:
 
-```toml
-[package.metadata.bundle]
+<Code lang="toml" code={`[package.metadata.bundle]
 identifier = "com.example.myapp"
-osx_url_schemes = ["myapp"]
-```
+osx_url_schemes = ["myapp"]`} />
 
 The example apps in the nexum repository use exactly this mechanism.
 
@@ -34,23 +30,20 @@ The example apps in the nexum repository use exactly this mechanism.
 
 `validate_bundle` (re-exported from `nexum_platform` on macOS targets) reads the running bundle's `Contents/Info.plist` — or `Info.plist` directly for iOS-style layouts — and returns every configured scheme that the plist does **not** declare:
 
-```rust
-let missing = nexum_platform::validate_bundle(&config).expect("readable plist");
+<Code lang="rust" code={`let missing = nexum_platform::validate_bundle(&config).expect("readable plist");
 if !missing.is_empty() {
     eprintln!("schemes missing from Info.plist: {missing:?}");
-}
-```
+}`} />
 
 For a text-level check without touching the bundle, `plist::missing_schemes` compares any plist XML against a `Config` case-insensitively (Apple lower-cases scheme strings) and tolerates arbitrary formatting:
 
-```rust
-let missing = nexum_platform::plist::missing_schemes(&plist_xml, &config);
-```
+<Code lang="rust" code={`let missing = nexum_platform::plist::missing_schemes(&plist_xml, &config);`} />
 
 A broken or empty plist reports *all* schemes as missing — the function never panics.
 
-> [!CAUTION]
-> Run `register` on the main thread. On macOS it installs the Apple-event delegate through `NSAppleEventManager`, and calling it off the main thread returns `Error::Platform("deep links must be registered on the main thread")`. The `#[deep_link]` bootstrap runs at the top of `main`, which satisfies this on every platform.
+<Aside type="danger">
+Run `register` on the main thread. On macOS it installs the Apple-event delegate through `NSAppleEventManager`, and calling it off the main thread returns `Error::Platform("deep links must be registered on the main thread")`. The `#[deep_link]` bootstrap runs at the top of `main`, which satisfies this on every platform.
+</Aside>
 
 ## How runtime delivery works
 
