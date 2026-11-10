@@ -7,13 +7,13 @@
  * - llms-full.txt: the same index followed by each page's full markdown body.
  *
  * Runs as part of `pnpm build` (after `astro build`).
- * Keep SITE in sync with astro.config.mjs (docs/decisions/0007-site-url.md).
+ * Keep SITE in sync with astro.config.ts (docs/decisions/0007-site-url.md).
  */
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const DIST = 'dist';
-const SITE = 'https://elcoosp.github.io/nexum'; // keep in sync with astro.config.mjs `site`
+const SITE = 'https://elcoosp.github.io/nexum'; // keep in sync with astro.config.ts `site`
 const DOCS = 'src/content/docs';
 const SITE_TITLE = 'Nexum';
 const SITE_DESCRIPTION =
