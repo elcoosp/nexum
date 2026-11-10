@@ -1,25 +1,41 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import astroTakumi from 'astro-takumi';
+import fs from 'node:fs';
+import { makeRender } from './src/og-render.mjs';
 import starlightLinksValidator from 'starlight-links-validator';
 import starlightImageZoom from 'starlight-image-zoom';
 import starlightHeadingBadges from 'starlight-heading-badges';
 
+const __logoB64 = fs.readFileSync("./src/assets/logo.png").toString("base64");
+const __render = makeRender({
+  logoDataUrl: "data:image/png;base64," + __logoB64,
+  accentHex: "#26408c",
+  accentHexA12: "#26408c1a",
+  domain: "nexum.vercel.app",
+  projectName: "Nexum",
+});
+
 export default defineConfig({
+	vite: {
+		ssr: { external: ["jsdom", "astro-takumi"] },
+	},
         // Deploy-specific: update `site` when the documentation moves to its final
         // origin (see docs/decisions/0007-site-url.md). Required by Starlight 0.42's
         // built-in sitemap; `base` is deliberately left unset (root deployment).
-        site: 'https://elcoosp.github.io/nexum',
+        site: 'https://nexum.vercel.app',
         integrations: [
                 starlight({
+			routeMiddleware: "./src/routeData.ts",
+                        expressiveCode: {
+                        	themes: ['github-light', 'github-dark'],
+                        },
                         plugins: [starlightLinksValidator(), starlightImageZoom(), starlightHeadingBadges()],
                         title: 'Nexum',
                         description:
                                 'Framework-agnostic deep linking for Rust — one unified API for custom URL schemes and deep-link events across Windows, macOS, Linux, Android and iOS.',
-                        logo: {
-                                src: './src/assets/logo.png',
-                                alt: 'Nexum',
-                                replacesTitle: false,
-                        },
+
+                        logo: { src: './src/assets/logo.png', replacesTitle: false },
                         favicon: '/favicon.png',
                         head: [
                                 { tag: 'link', attrs: { rel: 'icon', type: 'image/png', href: '/favicon.png' } },
@@ -88,5 +104,16 @@ export default defineConfig({
                                 },
                         ],
                 }),
-        ],
+        
+		astroTakumi({
+			options: {
+				domBackend: "linkedom",
+				fonts: [fs.readFileSync("./node_modules/@fontsource/roboto/files/roboto-latin-400-normal.woff2")],
+				width: 1200,
+				height: 630,
+				format: "png",
+			},
+			render: __render,
+		}),
+	],
 });
