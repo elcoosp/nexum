@@ -26,11 +26,11 @@ jobs:
         with:
           tool: git-cliff@2.14.2
       - name: Generate CHANGELOG.md
-        run: git cliff --output CHANGELOG.md
+        run: git cliff --config-url https://raw.githubusercontent.com/elcoosp/docs-toolkit/main/git-cliff/cliff.toml --output CHANGELOG.md
       - name: Extract the latest release notes
         id: notes
         run: |
-          git cliff --latest --strip all > release-notes.md
+          git cliff --config-url https://raw.githubusercontent.com/elcoosp/docs-toolkit/main/git-cliff/cliff.toml --latest --strip all > release-notes.md
           {
             echo 'body<<EOF'
             cat release-notes.md
