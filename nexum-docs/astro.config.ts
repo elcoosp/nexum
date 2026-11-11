@@ -5,6 +5,7 @@ import starlightHeadingBadges from 'starlight-heading-badges';
 
 
 export default await defineDocsConfig({
+  changelog: { repo: 'elcoosp/nexum' },
   site: 'https://nexum.vercel.app',
   domain: 'nexum.vercel.app',
   title: "Nexum",
