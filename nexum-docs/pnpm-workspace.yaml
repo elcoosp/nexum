@@ -28,3 +28,6 @@ allowBuilds:
 onlyBuiltDependencies:
 - esbuild
 - sharp
+
+overrides:
+  shiki: 4.6.0
