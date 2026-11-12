@@ -1,4 +1,5 @@
 import { defineDocsConfig } from '@elcoosp/docs-toolkit/config';
+import starlightChangelogs from 'starlight-changelogs';
 import starlightLinksValidator from 'starlight-links-validator';
 import starlightImageZoom from 'starlight-image-zoom';
 import starlightHeadingBadges from 'starlight-heading-badges';
@@ -15,7 +16,7 @@ export default await defineDocsConfig({
                         expressiveCode: {
                         	themes: ['github-light', 'github-dark']
                         },
-                        plugins: [starlightLinksValidator(), starlightImageZoom(), starlightHeadingBadges()],
+                        plugins: [ starlightChangelogs(), starlightLinksValidator(), starlightImageZoom(), starlightHeadingBadges()],
                         title: 'Nexum',
                         description:
                                 'Framework-agnostic deep linking for Rust — one unified API for custom URL schemes and deep-link events across Windows, macOS, Linux, Android and iOS.',
