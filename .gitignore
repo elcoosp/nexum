@@ -1,3 +1,5 @@
 target
 wr.sh
 dist/
+.vercel
+.env*
