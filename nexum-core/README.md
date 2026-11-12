@@ -46,7 +46,3 @@ assert_eq!(event.source, Source::System);
 Without `stream` the handle exposes blocking (`recv`, `try_recv`, `drain`)
 and async (`recv_async`, `recv_event_async`) APIs only.
 
-## License
-
-Licensed under either of [MIT](../LICENSE-MIT) or
-[Apache-2.0](../LICENSE-APACHE) at your option.

@@ -51,7 +51,3 @@ let handle = init(&config).expect("registration failed");
   generators plus the runtime intake entry points.
 - Bounded hubs: `init_with(&config, DeepLinkHub::bounded(16))`.
 
-## License
-
-Licensed under either of [MIT](../LICENSE-MIT) or
-[Apache-2.0](../LICENSE-APACHE) at your option.

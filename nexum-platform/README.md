@@ -69,9 +69,5 @@ each match is delivered with `Source::CommandLine`.
 
 Platform registration mutates process-global state. All global-state tests
 in this crate deliberately live in a single serial `#[test]` function; see
-[`docs/COVERAGE.md`](../docs/COVERAGE.md) for the full strategy.
+[`docs/COVERAGE.md`](https://github.com/elcoosp/nexum/blob/main/docs/COVERAGE.md) for the full strategy.
 
-## License
-
-Licensed under either of [MIT](../LICENSE-MIT) or
-[Apache-2.0](../LICENSE-APACHE) at your option.

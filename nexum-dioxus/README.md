@@ -49,7 +49,3 @@ launched are delivered as `Source::CommandLine` events automatically during
 `setup`, so a cold start from an OS shortcut behaves exactly like a runtime
 open.
 
-## License
-
-Licensed under either of [MIT](../LICENSE-MIT) or
-[Apache-2.0](../LICENSE-APACHE) at your option.

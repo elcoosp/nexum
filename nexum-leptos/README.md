@@ -68,7 +68,3 @@ any virtual DOM overhead. The executor must already be initialized — Leptos
 does this in `mount_to_body` on the web and through its SSR runtime on the
 server.
 
-## License
-
-Licensed under either of [MIT](../LICENSE-MIT) or
-[Apache-2.0](../LICENSE-APACHE) at your option.

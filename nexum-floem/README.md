@@ -51,7 +51,3 @@ while let Ok(url) = handle.recv_blocking() {
 `DeepLinkHandle` into Floem's reactive runtime through
 `create_signal_from_channel`; the UI thread only wakes when a URL arrives.
 
-## License
-
-Licensed under either of [MIT](../LICENSE-MIT) or
-[Apache-2.0](../LICENSE-APACHE) at your option.

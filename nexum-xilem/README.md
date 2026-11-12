@@ -48,7 +48,3 @@ Internally the adapter polls the hub with `task_raw` + a `MessageProxy`
 fork so deep links wake the Xilem event loop without blocking the UI
 thread.
 
-## License
-
-Licensed under either of [MIT](../LICENSE-MIT) or
-[Apache-2.0](../LICENSE-APACHE) at your option.
