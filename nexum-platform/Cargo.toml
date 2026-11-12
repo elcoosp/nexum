@@ -1,4 +1,6 @@
 [package]
+documentation = "https://nexum-rs.vercel.app"
+
 name = "nexum-platform"
 description = "OS-level URL-scheme registration for nexum (Windows, macOS, Linux)"
 version.workspace = true

@@ -1,4 +1,6 @@
 [package]
+documentation = "https://nexum-rs.vercel.app"
+
 name = "nexum-floem"
 description = "Floem adapter for nexum deep linking"
 version.workspace = true

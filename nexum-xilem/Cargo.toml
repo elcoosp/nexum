@@ -1,4 +1,6 @@
 [package]
+documentation = "https://nexum-rs.vercel.app"
+
 name = "nexum-xilem"
 description = "Xilem adapter for nexum deep linking"
 version.workspace = true

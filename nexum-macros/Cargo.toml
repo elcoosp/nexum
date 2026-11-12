@@ -1,4 +1,6 @@
 [package]
+documentation = "https://nexum-rs.vercel.app"
+
 name = "nexum-macros"
 description = "Attribute macros for the nexum deep-linking toolkit"
 version.workspace = true

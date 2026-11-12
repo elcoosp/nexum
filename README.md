@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/logo.png" alt="Nexum Logo" width="300"/>
+  <img src="https://cdn.jsdelivr.net/gh/elcoosp/nexum@main/docs/logo.png" alt="Nexum Logo" width="300"/>
   <p>
     <strong>Framework-agnostic deep linking for Rust</strong><br/>
     A unified API for registering custom URL schemes and receiving deep-link events across Windows, macOS, and Linux.
@@ -23,15 +23,15 @@ Nexum is organized as a modular workspace to keep dependencies minimal and integ
 
 | Crate | Framework | Integration Mechanism |
 | :--- | :--- | :--- |
-| [`nexum`](nexum/) | *None* | Facade: core + platform + `#[deep_link]` attribute in one dependency |
-| [`nexum-core`](nexum-core/) | *None* | `DeepLinkHub` producer + `DeepLinkHandle` consumer (blocking, async, `Stream`, bounded mode) |
-| [`nexum-platform`](nexum-platform/) | *None* | `init` / `register`, single-instance hand-off, plist validator, mobile intake |
-| [`nexum-macros`](nexum-macros/) | *None* | `#[deep_link(schemes = [...])]` bootstrap attribute |
-| [`nexum-floem`](nexum-floem/) | Floem | `setup` + `signal` → `ReadSignal<Option<String>>` (via `signal` feature) |
-| [`nexum-xilem`](nexum-xilem/) | Xilem | `setup` + `with_deep_links` view wrapper (`task_raw` + `MessageProxy`) |
-| [`nexum-dioxus`](nexum-dioxus/) | Dioxus | `launch_desktop` one-call path + `use_deep_link` signal |
-| [`nexum-leptos`](nexum-leptos/) | Leptos | `setup` + `signal`/`signal_from_handle` → `RwSignal<Option<String>>` (via `signal` feature) |
-| [`nexum-gpui`](nexum-gpui/) | GPUI | `setup_deep_links` + `attach_deep_link` (Zed git registry, outside the workspace) |
+| [`nexum`](https://github.com/elcoosp/nexum/tree/main/nexum) | *None* | Facade: core + platform + `#[deep_link]` attribute in one dependency |
+| [`nexum-core`](https://github.com/elcoosp/nexum/tree/main/nexum-core) | *None* | `DeepLinkHub` producer + `DeepLinkHandle` consumer (blocking, async, `Stream`, bounded mode) |
+| [`nexum-platform`](https://github.com/elcoosp/nexum/tree/main/nexum-platform) | *None* | `init` / `register`, single-instance hand-off, plist validator, mobile intake |
+| [`nexum-macros`](https://github.com/elcoosp/nexum/tree/main/nexum-macros) | *None* | `#[deep_link(schemes = [...])]` bootstrap attribute |
+| [`nexum-floem`](https://github.com/elcoosp/nexum/tree/main/nexum-floem) | Floem | `setup` + `signal` → `ReadSignal<Option<String>>` (via `signal` feature) |
+| [`nexum-xilem`](https://github.com/elcoosp/nexum/tree/main/nexum-xilem) | Xilem | `setup` + `with_deep_links` view wrapper (`task_raw` + `MessageProxy`) |
+| [`nexum-dioxus`](https://github.com/elcoosp/nexum/tree/main/nexum-dioxus) | Dioxus | `launch_desktop` one-call path + `use_deep_link` signal |
+| [`nexum-leptos`](https://github.com/elcoosp/nexum/tree/main/nexum-leptos) | Leptos | `setup` + `signal`/`signal_from_handle` → `RwSignal<Option<String>>` (via `signal` feature) |
+| [`nexum-gpui`](https://github.com/elcoosp/nexum/tree/main/nexum-gpui) | GPUI | `setup_deep_links` + `attach_deep_link` (Zed git registry, outside the workspace) |
 
 ## Platform Support
 
@@ -141,10 +141,10 @@ Explore ready-to-run implementations for each supported framework in the `exampl
 
 ## Quality & CI
 
-- **Tests:** the workspace keeps 100 % line coverage on `nexum-core`, `nexum-platform`, `nexum-floem` and `nexum-leptos` (enforced with `cargo-llvm-cov --fail-under-lines 100`, see [`docs/COVERAGE.md`](docs/COVERAGE.md)).
+- **Tests:** the workspace keeps 100 % line coverage on `nexum-core`, `nexum-platform`, `nexum-floem` and `nexum-leptos` (enforced with `cargo-llvm-cov --fail-under-lines 100`, see [`docs/COVERAGE.md`](https://github.com/elcoosp/nexum/blob/main/docs/COVERAGE.md)).
 - **Linting:** `clippy --pedantic` with `unsafe_code = "forbid"` (core) and `missing_docs` — zero warnings, zero allows.
 - **Cross-target checks:** the macOS / Windows / Android / iOS backends are type-checked on their real targets in CI, so cfg-gated code cannot rot.
-- **CI/CD:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (fmt, clippy, 3-OS test matrix, MSRV, cross-target, docs, coverage), [`release.yml`](.github/workflows/release.yml) (git-cliff changelog + crates.io publishing), [`security.yml`](.github/workflows/security.yml) (cargo-deny + typos), Dependabot for weekly updates.
+- **CI/CD:** [`.github/workflows/ci.yml`](https://github.com/elcoosp/nexum/blob/main/github/workflows/ci.yml) (fmt, clippy, 3-OS test matrix, MSRV, cross-target, docs, coverage), [`release.yml`](https://github.com/elcoosp/nexum/blob/main/github/workflows/release.yml) (git-cliff changelog + crates.io publishing), `security.yml` (cargo-deny + typos), Dependabot for weekly updates.
 
 > [!TIP]
 > For detailed setup instructions specific to your framework (especially macOS `Info.plist` configuration), refer to the individual adapter crate's README or the provided examples.

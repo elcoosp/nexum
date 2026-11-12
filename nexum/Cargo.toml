@@ -1,4 +1,6 @@
 [package]
+documentation = "https://nexum-rs.vercel.app"
+
 name = "nexum"
 description = "Framework-agnostic deep linking for Rust: one dependency, one bootstrap"
 version.workspace = true

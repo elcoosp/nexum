@@ -1,4 +1,6 @@
 [package]
+documentation = "https://nexum-rs.vercel.app"
+
 name = "nexum-core"
 description = "Framework-agnostic deep-linking primitives for Rust"
 version.workspace = true
