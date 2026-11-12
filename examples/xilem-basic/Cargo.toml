@@ -23,3 +23,6 @@ category = "public.app-category.developer-tools"
 short_description = "Nexum Xilem Deep Link Example"
 long_description = "Example application for Nexum deep linking in Xilem."
 osx_url_schemes = ["xilem"]
+
+[workspace]
+

@@ -1,4 +1,5 @@
 [package]
+publish = false
 name = "nexum-gpui"
 description = "GPUI adapter for nexum deep linking"
 version.workspace = true

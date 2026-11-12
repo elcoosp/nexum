@@ -26,3 +26,6 @@ category = "public.app-category.developer-tools"
 short_description = "Nexum Leptos Deep Link Example"
 long_description = "Example application for Nexum deep linking in Leptos."
 osx_url_schemes = ["nexumdemo"]
+
+[workspace]
+

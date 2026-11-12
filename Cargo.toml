@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+    "nexum-gpui",
     "nexum",
     "nexum-macros",
     "nexum-core",
@@ -9,10 +10,6 @@ members = [
     "nexum-xilem",
     "nexum-dioxus",
     "nexum-leptos",
-    "examples/floem-basic",
-    "examples/xilem-basic",
-    "examples/dioxus-basic",
-    "examples/leptos-basic",
 ]
 # `nexum-gpui` is intentionally not a workspace member: it tracks Zed's `main`
 # branch through a git dependency, which is far too heavy for routine CI.
