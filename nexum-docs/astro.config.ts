@@ -3,7 +3,6 @@ import starlightLinksValidator from 'starlight-links-validator';
 import starlightImageZoom from 'starlight-image-zoom';
 import starlightHeadingBadges from 'starlight-heading-badges';
 
-
 export default await defineDocsConfig({
   llmsTxt: {},
   changelog: { repo: 'elcoosp/nexum' },
@@ -35,13 +34,7 @@ export default await defineDocsConfig({
                         editLink: {
                                 baseUrl: 'https://github.com/elcoosp/nexum/edit/main/docs-site/src/content/docs/'
                         },
-                        defaultLocale: 'root',
-                        locales: {
-                                root: {
-                                        label: 'English',
-                                        lang: 'en'
-                                }
-                        },
+
                         sidebar: [
                                 { label: 'Overview', link: '/' },
                                 {
