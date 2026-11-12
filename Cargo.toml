@@ -16,6 +16,7 @@ members = [
 # It is built and verified separately by its own README instructions.
 
 [workspace.package]
+keywords = ["reactive", "signals", "ui", "state", "framework"]
 version = "0.3.0"
 edition = "2024"
 rust-version = "1.86"
@@ -23,7 +24,6 @@ license = "MIT OR Apache-2.0"
 authors = ["elcoosp"]
 repository = "https://github.com/elcoosp/nexum"
 homepage = "https://github.com/elcoosp/nexum"
-keywords = ["deep-link", "url-scheme", "cross-platform", "gui", "desktop"]
 categories = ["gui", "os"]
 
 [workspace.dependencies]
