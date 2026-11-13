@@ -1,0 +1,66 @@
+---
+title: Référence nexum-platform
+description: "Enregistrement OS, hub global au processus, validation plist, entrée mobile et transfert mono-instance — signatures et comportement par plateforme."
+type: reference
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+`nexum-platform` transforme un `Config` en gestionnaire de protocole enregistré auprès de l'OS et héberge le hub global au processus que les relais de plateforme alimentent. Les backends de bureau sont conditionnés par `cfg` par cible ; `plist` et `mobile` compilent partout ; `single_instance` requiert son drapeau de fonctionnalité sous Unix ou Windows.
+
+## Fonctions racines
+
+| Fonction | Signature | Description |
+| --- | --- | --- |
+| `hub` | `fn hub() -> Option<&'static DeepLinkHub>` | Le hub global au processus, s'il est initialisé |
+| `set_hub` | `fn set_hub(hub: DeepLinkHub) -> Result<()>` | Installe un hub global personnalisé ; `HubAlreadySet` sur appels répétés |
+| `push_url` | `fn push_url(url: impl Into<String>) -> Result<()>` | Pousse dans le hub global avec `Source::System` ; `HubNotSet` avant init |
+| `push_launch_url` | `fn push_launch_url(url: impl Into<String>) -> Result<()>` | Idem, avec `Source::CommandLine` |
+| `register` | `fn register(config: &Config) -> Result<()>` | Exécute le backend de plateforme, puis relaie les URL de démarrage à froid depuis `std::env::args().skip(1)`. Sous macOS, panique si non appelée depuis le thread principal |
+| `init` | `fn init(config: &Config) -> Result<DeepLinkHandle>` | `init_with(config, DeepLinkHub::new())` |
+| `init_with` | `fn init_with(config: &Config, hub: DeepLinkHub) -> Result<DeepLinkHandle>` | Installe un hub spécifique (par ex. borné) et enregistre ; renvoie un handle vers lui |
+| `validate_bundle` | `fn validate_bundle(config: &Config) -> Result<Vec<String>>` | macOS uniquement (ré-export du backend) : schémas absents du `Info.plist` du bundle en cours |
+
+`init` et `init_with` échouent avec `HubAlreadySet` quand elles sont appelées deux fois — y compris indirectement, une fois qu'un adaptateur a déjà initialisé.
+
+## Backends de plateforme
+
+| Backend | Ce que l'enregistrement écrit | Livraison à l'exécution | Démarrage à froid |
+| --- | --- | --- | --- |
+| Windows | Par schéma sous `HKCU\Software\Classes` : marqueur protocole, `DefaultIcon` (`icon_path` ou exe), `shell\open\command` = `"{exe}" "%1"` | L'OS lance un second processus ; pas une source d'événements vivante | URL extraite de `argv`, poussée en `Source::CommandLine` |
+| macOS | Rien sur le disque — installe un délégué d'Apple event `GURL` via `NSAppleEventManager` (thread principal requis) | Le délégué pousse les URL dans le hub via `push_launch_url` → `Source::CommandLine` | Même chemin d'Apple event après installation du délégué |
+| Linux | `{data_local_dir}/applications/{app}.desktop` avec `Exec`, `Icon`, `MimeType=x-scheme-handler/...`, puis `xdg-mime default` par schéma | L'OS lance un second processus | URL extraite de `argv`, poussée en `Source::CommandLine` |
+| Android / iOS | Générateurs déclaratifs (modules `mobile` + `plist`) | La colle de framework appelle les fonctions d'entrée | Même chemin d'entrée |
+
+## Module plist
+
+| Fonction | Signature | Description |
+| --- | --- | --- |
+| `url_types_xml` | `fn url_types_xml(config: &Config) -> String` | Rend le bloc XML `CFBundleURLTypes` complet pour les schémas configurés |
+| `missing_schemes` | `fn missing_schemes(plist_xml: &str, config: &Config) -> Vec<String>` | Schémas configurés absents du XML de plist fourni ; sans tenir compte de la casse ; tolérant à un formatage arbitraire ou cassé (un plist cassé rapporte tous les schémas manquants) |
+
+## Module mobile
+
+| Fonction | Signature | Cible | Description |
+| --- | --- | --- | --- |
+| `android_manifest_intent_filter` | `fn android_manifest_intent_filter(config: &Config) -> String` | Toutes les cibles | Rend un `<intent-filter>` (VIEW, DEFAULT + BROWSABLE, un `<data>` par schéma) |
+| `push_intent_url` | `fn push_intent_url(url: impl Into<String>) -> Result<()>` | `target_os = "android"` | Alimente le hub avec les URL de `Intent.getDataString()` depuis la colle JNI, en `Source::System` |
+| `push_open_urls` | `fn push_open_urls<I>(urls: I) -> Result<()> where I: IntoIterator, I::Item: Into<String>` | `target_os = "ios"` | Alimente le hub avec les URL du délégué `openURLContexts`/`open URL:`, en `Source::System` |
+
+Les deux fonctions d'entrée renvoient `Error::HubNotSet` tant qu'un hub n'est pas installé.
+
+## Module single_instance
+
+Disponible avec la fonctionnalité `single-instance` sur les cibles Unix et Windows — comportement complet dans le [guide du transfert](/guides/single-instance/).
+
+| Élément | Type | Description |
+| --- | --- | --- |
+| `acquire` | `fn acquire(config: &Config, urls: &[String]) -> Result<Acquisition>` | Après init du hub : devenir primaire ou transférer à l'instance en cours |
+| `Acquisition::Primary(PrimaryGuard)` | variante d'énumération | Ce processus possède le socket ; le guard doit vivre pendant toute la durée de vie du processus |
+| `Acquisition::HandedOff` | variante d'énumération | `HandedOff { forwarded: usize }` ; URL livrées, l'appelant doit sortir |
+| `PrimaryGuard` | struct | L'abandon ferme le socket (et supprime le fichier de socket Unix) |
+
+## Étapes suivantes
+
+- <LinkCard title="Référence des erreurs" href="/reference/errors/" description="Le type Error partagé que toutes ces fonctions renvoient." />
+- <LinkCard title="Sources d'événements expliquées" href="/explanation/event-sources/" description="Sémantique System versus CommandLine par plateforme." />

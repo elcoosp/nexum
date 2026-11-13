@@ -1,0 +1,102 @@
+---
+title: Construire votre premier lien profond
+description: "Parcourez la création d'une petite application Rust qui enregistre un schéma d'URL personnalisé et reçoit des événements de lien profond avec nexum."
+type: tutorial
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+Dans ce tutoriel, vous construisez un programme Rust complet qui possède le schéma d'URL `myapp://`. Vous enregistrez le schéma auprès de votre système d'exploitation, lancez l'application, ouvrez une URL `myapp://` depuis un terminal ou un navigateur, et observez l'URL arriver dans votre processus. En chemin, vous rencontrez les trois pièces que chaque application nexum utilise : un `Config`, l'enregistrement OS, et un `DeepLinkHandle`.
+
+## Prérequis
+
+- Rust 1.85 ou plus récent (nexum utilise l'édition 2024). Vérifiez avec `rustc --version`.
+- Un terminal sous Windows, macOS ou Linux.
+- Environ dix minutes.
+
+## Étape 1 — Créer un projet
+
+Créez une nouvelle crate binaire et déplacez-vous dedans :
+
+<Code lang="bash" code={`cargo new nexum-demo
+cd nexum-demo`} />
+
+## Étape 2 — Ajouter la façade nexum
+
+La façade `nexum` est le chemin à une seule dépendance : elle ré-exporte `Config`, la couche plateforme et l'attribut `#[deep_link]`.
+
+<Code lang="bash" code={`cargo add nexum`} />
+
+Votre `Cargo.toml` gagne :
+
+<Code lang="toml" code={`[dependencies]
+nexum = "0.3"`} />
+
+## Étape 3 — Écrire le bootstrap
+
+Remplacez le contenu de `src/main.rs` par :
+
+<Code lang="rust" code={`use nexum::deep_link;
+
+#[deep_link(schemes = ["myapp"])]
+fn main() {
+    // L'enregistrement se produit avant l'exécution de ce corps ; le handle
+    // consommateur est lié à \`_nexum_handle\`.
+    if let Ok(url) = _nexum_handle.recv_blocking() {
+                    println!("opened {url}");
+    }
+}`} />
+
+L'attribut `#[deep_link]` réécrit votre `main` pour que nexum construise un `Config` validé et appelle `nexum::platform::init` *avant* l'exécution de votre première instruction. Le `DeepLinkHandle` renvoyé est lié à la liaison générée `_nexum_handle`, que vous utilisez ensuite pour recevoir les URL.
+
+<Aside type="danger">
+Le code généré panique si la configuration est invalide ou si l'enregistrement OS échoue. Pour un contrôle faillible — par exemple pour afficher une boîte de dialogue d'erreur — utilisez `nexum::platform::init` directement au lieu de l'attribut.
+</Aside>
+
+## Étape 4 — Lancer l'application
+
+Démarrez le programme et laissez-le tourner :
+
+<Code lang="bash" code={`cargo run`} />
+
+Au premier lancement, nexum enregistre `myapp://` pour votre utilisateur :
+
+- **Windows** — écrit `HKCU\Software\Classes\myapp` avec une entrée `shell\open\command` pointant vers l'exécutable courant.
+- **macOS** — installe un gestionnaire d'Apple events pour la classe d'événements `GURL`. Les applications empaquetées doivent aussi déclarer le schéma dans `Info.plist`, que vous pouvez générer avec `nexum::platform::plist::url_types_xml`.
+- **Linux** — écrit un fichier `.desktop` dans le répertoire d'applications de votre utilisateur et appelle `xdg-mime default` pour lier le schéma.
+
+## Étape 5 — Déclencher le lien profond
+
+L'application toujours en cours d'exécution, ouvrez une URL `myapp://` depuis un autre terminal :
+
+<Code lang="bash" code={`# macOS
+open "myapp://open/settings"
+
+# Linux
+xdg-open "myapp://open/settings"
+
+# Windows (PowerShell)
+Start-Process "myapp://open/settings"`} />
+
+Le système d'exploitation recherche le gestionnaire et lance — ou, sous Windows et Linux, relance — l'exécutable enregistré avec l'URL. Nexum détecte l'URL parmi les arguments du processus et la relaie dans votre application.
+
+L'endroit où la sortie apparaît dépend de votre plateforme :
+
+- **macOS** — l'URL voyage vers l'instance *en cours d'exécution* sous forme d'Apple event, et la première application imprime `opened myapp://open/settings`.
+- **Windows et Linux** — l'OS démarre une *seconde* instance avec l'URL sur sa ligne de commande ; ce second processus atteint le `println!` dans son propre terminal. Pour transférer l'URL dans le processus d'origine et faire sortir la seconde instance, activez la fonctionnalité mono-instance décrite dans [Transfert mono-instance](/guides/single-instance/).
+
+## Ce que vous avez construit
+
+Vous avez maintenant un programme Rust qui possède un schéma d'URL de bout en bout : l'OS le lance pour les URL `myapp://`, nexum extrait l'URL du contexte de lancement, et `recv_blocking()` la remet à votre code sous forme de `String`.
+
+<Aside type="tip">
+Chaque événement est un `DeepLinkEvent` avec une `url` et une `source`. Appelez `recv_event_blocking()` au lieu de `recv_blocking()` pour voir d'où vient un événement — les transferts à l'exécution et les démarrages à froid en ligne de commande sont distinguables via `Source`.
+</Aside>
+
+## Étapes suivantes
+
+Adaptez le même flux de travail au framework UI de votre choix, ou plongez dans les primitives :
+
+- <LinkCard title="Choisir un adaptateur" href="/guides/choosing-an-adapter/" description="Comparez les intégrations Floem, Xilem, Dioxus, Leptos et GPUI." />
+- <LinkCard title="Guides de configuration par plateforme" href="/guides/macos-setup/" description="Déclarez votre schéma dans Info.plist, le registre Windows ou un fichier .desktop." />
+- <LinkCard title="Référence de l'API du cœur" href="/reference/core/" description="Signatures de Config, DeepLinkHub, DeepLinkHandle et DeepLinkEvent." />

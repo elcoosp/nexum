@@ -1,0 +1,57 @@
+---
+title: Gérer les liens profonds mobiles
+description: "Générez des filtres d'intent Android et des types d'URL iOS, et alimentez le hub nexum avec les URL d'exécution provenant de la colle de votre framework."
+type: how-to
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+Les plateformes mobiles n'ont aucune API que nexum puisse appeler pour enregistrer un schéma — Android et iOS déclarent tous deux les schémas statiquement dans les métadonnées de l'application. Nexum fournit donc des **générateurs** pour ces déclarations, plus de petites fonctions d'entrée que votre colle de framework appelle lorsque l'OS remet une URL.
+
+## Déclarer les schémas
+
+**Android** — `nexum_platform::mobile::android_manifest_intent_filter` rend un `<intent-filter>` complet (action VIEW, catégories `DEFAULT` + `BROWSABLE`, un `<data android:scheme="...">` par schéma configuré). Collez-le dans l'activité de votre `AndroidManifest.xml` :
+
+<Code lang="rust" code={`let config = Config::builder().scheme("myapp").build().expect("valid config");
+let filter_xml = nexum_platform::mobile::android_manifest_intent_filter(&config);`} />
+
+Forme générée :
+
+<Code lang="xml" code={`<intent-filter>
+ <action android:name="android.intent.action.VIEW" />
+ <category android:name="android.intent.category.DEFAULT" />
+ <category android:name="android.intent.category.BROWSABLE" />
+ <data android:scheme="myapp" />
+</intent-filter>`} />
+
+**iOS** — utilisez `nexum_platform::plist::url_types_xml` pour rendre le bloc `CFBundleURLTypes` du `Info.plist` de votre application, exactement comme sous macOS de bureau. `plist::missing_schemes` vous permet de vérifier le plist construit contre un `Config` dans un test.
+
+## Alimenter le hub avec les URL d'exécution
+
+Initialisez le hub global une fois au démarrage — par exemple en stockant un hub avec `set_hub` — puis appelez la fonction d'entrée de votre plateforme depuis la colle de framework qui reçoit les callbacks de l'OS :
+
+| Plateforme | Callback que vous câblez | Fonction d'entrée |
+| --- | --- | --- |
+| Android | `onCreate` / `onNewIntent` (`Intent.getDataString()`) | `nexum_platform::mobile::push_intent_url(url)` |
+| iOS | `openURLContexts(_:)` / `open URL:` délégué | `nexum_platform::mobile::push_open_urls(urls)` |
+
+Les deux poussent dans le hub global en tant que `Source::System` et renvoient `Err(Error::HubNotSet)` si le hub n'a jamais été initialisé, donc une erreur de câblage échoue bruyamment au premier usage :
+
+<Code lang="rust" code={`// colle JNI Android (pseudo-appel) :
+nexum_platform::mobile::push_intent_url(intent_data_string)?;
+
+// délégué iOS (pseudo-appel) :
+nexum_platform::mobile::push_open_urls(url_strings)?;`} />
+
+<Aside type="danger">
+Les fonctions d'entrée sont conditionnées par la cible : `push_intent_url` compile seulement sur `target_os = "android"` et `push_open_urls` seulement sur `target_os = "ios"`. Conditionnez votre code de colle avec les mêmes attributs cfg. La CI vérifie les types de la crate de plateforme contre de vraies cibles Android et iOS, donc cela ne peut pas pourrir silencieusement.
+</Aside>
+
+## La consommation reste inchangée
+
+Tout ce qui est en aval du hub est identique au bureau : votre signal d'adaptateur, votre consommateur `DeepLinkHandle`, votre politique de file bornée et l'analyse d'événements fonctionnent de la même façon, parce que les événements mobiles ne diffèrent que par la façon dont ils *entrent* dans le hub.
+
+## Étapes suivantes
+
+- <LinkCard title="Référence de l'API de plateforme" href="/reference/platform/" description="Les signatures des modules mobile et plist." />
+- <LinkCard title="Sources d'événements expliquées" href="/explanation/event-sources/" description="Comment les événements d'entrée mobiles sont classés." />

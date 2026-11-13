@@ -1,0 +1,50 @@
+---
+title: Configurer les liens profonds sous Windows
+description: "Comprenez les clés de registre par utilisateur que nexum écrit pour vos schémas d'URL et comment les démarrages à froid en ligne de commande livrent les URL."
+type: how-to
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+Sous Windows, nexum enregistre chaque schéma configuré sous la ruche de registre de l'**utilisateur courant** — aucun droit administrateur n'est requis. L'enregistrement se fait dans `nexum::platform::register` (appelé par `init` ou par le bootstrap `#[deep_link]`) en utilisant le chemin de l'exécutable en cours.
+
+## Ce qui est écrit
+
+Pour chaque schéma de votre `Config`, nexum écrit trois valeurs de registre sous `HKEY_CURRENT_USER\Software\Classes` :
+
+| Clé de registre | Valeur | Contenu |
+| --- | --- | --- |
+| `Software\Classes\myapp` | *(par défaut)* | `URL:myapp Protocol` |
+| `Software\Classes\myapp` | `URL Protocol` | chaîne vide — le marqueur qui transforme la clé en gestionnaire de protocole |
+| `Software\Classes\myapp\DefaultIcon` | *(par défaut)* | `{icon_path},0`, avec repli sur `{exe_path},0` |
+| `Software\Classes\myapp\shell\open\command` | *(par défaut)* | `"{exe_path}" "%1"` |
+
+Le chemin de l'exécutable vient de `std::env::current_exe()` au moment de l'enregistrement, et l'icône vient de `Config::icon_path` lorsque vous en définissez une :
+
+<Code lang="rust" code={`let config = Config::builder()
+    .scheme("myapp")
+    .icon_path("C:/apps/icons/myapp.ico")
+    .build()
+    .expect("valid config");`} />
+
+Parce que le modèle `shell\open\command` passe `"%1"` comme argument, l'OS lance votre exécutable avec l'URL comme paramètre de ligne de commande pour chaque lien profond — à la fois les démarrages à froid et les invocations à chaud.
+
+## Comment les URL atteignent votre application
+
+`register` termine en relayant les arguments du processus courant : `relay_cold_start_urls` exécute `Config::extract_launch_urls` sur `std::env::args().skip(1)`, garde chaque argument qui s'analyse comme URL absolue avec l'un de vos schémas configurés (sans tenir compte de la casse), et pousse chacun dans le hub avec `push_launch_url`.
+
+Le résultat est un flux uniforme :
+
+1. L'utilisateur ouvre `myapp://open/settings`.
+2. L'OS résout le gestionnaire de protocole et démarre (ou redémarre) votre exécutable avec l'URL dans ses arguments.
+3. La nouvelle instance enregistre le schéma de façon idempotente, extrait l'URL de `argv` et livre un `DeepLinkEvent` avec `url = "myapp://open/settings"` et `source = Source::CommandLine`.
+4. Sans la fonctionnalité single-instance, le second processus consomme l'URL lui-même ; avec elle, l'URL est transférée à l'instance d'origine via TCP loopback et le second processus se termine.
+
+<Aside type="tip">
+Les URL de schéma seul comme `myapp:` sont valides et sont aussi extraites — `extract_launch_urls` les accepte par conception.
+</Aside>
+
+## Étapes suivantes
+
+- <LinkCard title="Transfert mono-instance" href="/guides/single-instance/" description="Routez les liens profonds des secondes instances vers la première." />
+- <LinkCard title="Référence de l'API de plateforme" href="/reference/platform/" description="init, register et les fonctions du hub global." />

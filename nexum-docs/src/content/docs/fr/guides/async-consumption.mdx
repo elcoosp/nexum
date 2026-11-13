@@ -1,0 +1,65 @@
+---
+title: Consommer les liens profonds de façon asynchrone
+description: "Utilisez les méthodes de réception asynchrones, la fonctionnalité stream et les API de sondage pour intégrer les événements de lien profond dans n'importe quel exécuteur ou runtime."
+type: how-to
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+`DeepLinkHandle` offre quatre styles de consommation : bloquant, async-await, sondage, et (avec la fonctionnalité `stream`) un `Stream`. Toutes les méthodes asynchrones tournent sur n'importe quel exécuteur parce que le transport sous-jacent est `async-channel` — il n'y a aucune dépendance à tokio ni aucune exigence de runtime.
+
+## Async await
+
+<Code lang="rust" code={`// natif ou wasm, n'importe quel exécuteur :
+while let Some(url) = handle.recv().await {
+    println!("received {url}");
+}`} />
+
+| Méthode | Forme de signature | Notes |
+| --- | --- | --- |
+| `recv` | `async fn recv(&self) -> Option<String>` | `None` une fois que le hub s'arrête |
+| `recv_event` | `async fn recv_event(&self) -> Option<DeepLinkEvent>` | Inclut la `source` de l'événement |
+| `recv_url` | `async fn recv_url(&self) -> Option<Result<url::Url>>` | Les URL malformées apparaissent comme `Some(Err(_))` au lieu de bloquer le consommateur |
+
+`recv_url` est la variante analyse-à-la-réception : le hub stocke des `String` brutes, donc l'analyse se produit paresseusement côté consommateur et une mauvaise URL n'empoisonne jamais le canal.
+
+## Sous forme de flux
+
+Activez la fonctionnalité et convertissez le handle :
+
+<Code lang="toml" code={`[dependencies]
+nexum = { version = "0.3", features = ["stream"] }`} />
+
+<Code lang="rust" code={`use futures::StreamExt;
+
+let mut stream = handle.into_stream(); // Stream<Item = String>
+while let Some(url) = stream.next().await {
+    println!("received {url}");
+}`} />
+
+`DeepLinkStream` produit des chaînes d'URL brutes et se termine lorsque le canal s'arrête, donc il se compose avec les adaptateurs de flux habituels — `filter_map`, `timeout`, `select` — de `futures` ou tokio-stream.
+
+## Sondage et vidage par lots
+
+Pour les intégrations de boucle d'événements qui ne peuvent pas attendre, le handle expose des accesseurs non bloquants :
+
+<Code lang="rust" code={`if let Some(url) = handle.try_recv() {
+    // une URL si disponible
+}
+let backlog = handle.drain(); // toutes les URL actuellement en file, dans l'ordre`} />
+
+`try_recv` renvoie `None` à la fois quand la file est vide *et* après l'arrêt — les deux états sont délibérément indistinguables. Utilisez `recv_event_blocking` lorsque vous avez besoin de les distinguer.
+
+## Notes par plateforme
+
+- **wasm** — les méthodes bloquantes (`recv_blocking`, `recv_event_blocking`) sont compilées hors des cibles wasm ; les API asynchrones et de sondage restent toujours disponibles. Sur wasm, un hub borné *abandonne* au lieu de bloquer sur un push plein.
+- **Adaptateurs à threads** — l'aide `signal()` de Floem est le motif de référence pour le pont vers un framework : un thread dédié appelle `recv_blocking` et transmet dans le runtime réactif. Copiez cette forme lorsque votre framework n'a pas encore d'adaptateur.
+
+<Aside type="tip">
+Cloner un `DeepLinkHandle` vous donne un autre consommateur indépendant ; le hub livre chaque événement à exactement un consommateur, en round-robin parmi les récepteurs actifs. C'est du partage de charge, pas de la diffusion — pour du fan-out, abonnez-vous avec plusieurs hubs ou démultiplexez vous-même.
+</Aside>
+
+## Étapes suivantes
+
+- <LinkCard title="Référence de l'API du cœur" href="/reference/core/" description="Chaque signature de méthode de DeepLinkHandle dans un seul tableau." />
+- <LinkCard title="Hub borné" href="/guides/bounded-hub/" description="Sémantique de contre-pression pour les producteurs." />

@@ -1,0 +1,47 @@
+---
+title: Référence nexum-xilem
+description: "Adaptateur Xilem — setup, le wrapper de vue with_deep_links et le comportement de relais de messages."
+type: reference
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+`nexum-xilem` route les événements de lien profond dans l'arbre de vues de Xilem via un relais basé sur des tâches. Elle ré-exporte les types du cœur et l'alias du module `platform` comme chaque adaptateur.
+
+## API
+
+| Élément | Signature | Description |
+| --- | --- | --- |
+| `setup` | `fn setup(config: &Config) -> Result<()>` | Enregistre auprès de l'OS et stocke le handle globalement au processus ; `HubAlreadySet` sur double init |
+| `handle` | `fn handle() -> &'static DeepLinkHandle` | Le handle stocké ; **panique** si `setup` n'a pas été appelé |
+| `with_deep_links` | `fn with_deep_links<State, V>(view: V, on_url: impl Fn(&mut State, String) + Send + Sync + 'static) -> impl WidgetView<State>` | Enveloppe une vue : bifurque une tâche Xilem qui transmet les URL à `on_url` |
+
+`State` doit être `'static` et `V` un `WidgetView<State>`. Aucun drapeau de fonctionnalité n'existe — tout est toujours disponible.
+
+## Utilisation
+
+<Code lang="rust" code={`nexum_xilem::setup(&config).expect("deep-link setup");
+
+fn app_logic(state: &mut AppState) -> impl WidgetView<AppState> + use<> {
+    let content = /* votre vue normale */;
+    with_deep_links(content, |state: &mut AppState, url| {
+                    state.last_url = Some(url);
+    })
+}`} />
+
+## Comment fonctionne la livraison
+
+`with_deep_links` construit un `task_raw` dont le corps asynchrone attend `handle.recv()` en boucle et pousse chaque URL via le `MessageProxy` de Xilem ; la tâche renvoyée est combinée à votre vue via `fork`. Conséquences à connaître :
+
+- Le callback `on_url` s'exécute sur le **thread d'application**, exactement comme un callback d'événement Xilem normal — aucune synchronisation supplémentaire nécessaire pour `State`.
+- Le relais se termine silencieusement quand l'arbre de vues ou le driver disparaît (le proxy signale une erreur d'envoi), donc le démontage est automatique.
+- Appeler `handle()` ou `with_deep_links` avant `setup` panique avec `nexum_xilem::setup must be called before consuming deep links` — un signal délibéré d'erreur de programmation.
+
+<Aside type="tip">
+Parce que `setup` est faillible et `with_deep_links` ne l'est pas, appelez `setup` dans `main` avant de construire le driver `Xilem`, puis traitez le reste de l'intégration comme infaillible.
+</Aside>
+
+## Étapes suivantes
+
+- <LinkCard title="Guide de consommation asynchrone" href="/guides/async-consumption/" description="La boucle recv que cet adaptateur exécute pour vous." />
+- <LinkCard title="Référence du cœur" href="/reference/core/" description="Le handle stocké par setup." />

@@ -1,0 +1,64 @@
+---
+title: Transfert mono-instance
+description: "Transférez les liens profonds d'une seconde instance de l'application vers celle en cours d'exécution avec la fonctionnalité single-instance de nexum."
+type: how-to
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+Sous Windows et Linux, un lien profond lance généralement une **seconde** instance de votre application. La fonctionnalité `single-instance` transforme ce lancement en transfert : la seconde instance transmet ses URL au processus d'origine via un socket local et se termine, de sorte qu'une seule copie de votre application reste vivante.
+
+## Activer la fonctionnalité
+
+<Code lang="toml" code={`[dependencies]
+nexum = { version = "0.3", features = ["single-instance"] }`} />
+
+Le module vit dans la couche plateforme, donc `nexum::platform::single_instance` est le point d'entrée (ou `nexum_platform::single_instance` si vous dépendez directement de la crate de plateforme).
+
+## L'utiliser au démarrage
+
+Appelez `acquire` **après** l'initialisation du hub (`init`, `init_with` ou `set_hub` — sinon vous obtenez `Error::HubNotSet`), en passant les URL que le processus courant doit livrer :
+
+<Code lang="rust" code={`use nexum::platform::single_instance::{acquire, Acquisition};
+
+let urls = config.extract_launch_urls(std::env::args().skip(1));
+
+match acquire(&config, &urls)? {
+    Acquisition::Primary(_guard) => {
+                    // Ce processus possède le socket de lien profond.
+                    // Gardez \`_guard\` vivant pendant toute la durée de vie de l'application.
+                    run_app();
+    }
+    Acquisition::HandedOff { forwarded } => {
+                    // Une autre instance a répondu ; les URL \`forwarded\` ont été
+                    // livrées. Quittez ce processus maintenant.
+    }
+}`} />
+
+Chaque URL transférée arrive dans le hub du processus primaire comme un `DeepLinkEvent` normal avec `Source::System`, donc les consommateurs traitent les transferts exactement comme les liens livrés par l'OS.
+
+<Aside type="danger">
+Abandonner le `PrimaryGuard` ferme le socket immédiatement. Gardez-le dans l'état de votre application pendant toute la durée de vie du processus — le compilateur l'annote `#[must_use]` exactement pour cette raison.
+</Aside>
+
+## Détails du transport
+
+| Propriété | Unix | Windows |
+| --- | --- | --- |
+| Socket | Socket de domaine Unix nommé `nexum-{hash}.sock` (FNV-1a des schémas en minuscules) | TCP loopback sur `127.0.0.1`, port `47000 + (hash % 1000)` |
+| Répertoire | `XDG_RUNTIME_DIR` s'il est défini, sinon le répertoire temporaire système | Répertoire temporaire système |
+| Protocole | En-tête `NEXUM/1 {count}`, une URL par ligne, terminé par un accusé de réception `OK` | Même protocole |
+| Délai de poignée de main | 2 secondes | 2 secondes |
+
+Le nom du socket dérive de vos schémas configurés, donc les applications avec des schémas différents n'entrent jamais en collision. Les pairs étrangers sont rejetés par la vérification de l'en-tête magique, et une poignée de main qui se termine sans le `OK` attendu échoue avec une erreur nommant la cause.
+
+## Dépannage
+
+- **`stale single-instance socket: the previous instance crashed`** — un primaire précédent est mort sans nettoyage et a laissé le fichier de socket. Nexum détecte le refus de connexion et le rapporte explicitement ; l'exécution suivante prend le relais comme primaire.
+- **`the running instance did not acknowledge the hand-off`** — quelque chose a répondu sur le socket mais ne parlait pas le protocole nexum, ou le primaire a bloqué au-delà du délai de 2 secondes.
+- **URL non reçues** — confirmez que `acquire` s'exécute après l'initialisation du hub dans *les deux* instances, et que la seconde instance passe ses URL de ligne de commande extraites comme tranche `urls`.
+
+## Étapes suivantes
+
+- <LinkCard title="Sources d'événements expliquées" href="/explanation/event-sources/" description="Pourquoi les liens transférés apparaissent comme Source::System." />
+- <LinkCard title="Référence de l'API de plateforme" href="/reference/platform/" description="Les signatures du module single_instance." />

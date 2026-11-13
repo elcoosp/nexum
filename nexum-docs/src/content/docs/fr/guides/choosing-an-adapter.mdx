@@ -1,0 +1,82 @@
+---
+title: Choisir un adaptateur
+description: "Comparez les cinq adaptateurs de framework UI de nexum et choisissez celui qui correspond au modèle réactif de votre application."
+type: how-to
+---
+
+import { Code, LinkCard } from '@astrojs/starlight/components';
+
+Les cinq adaptateurs enveloppent le même cœur : chacun appelle `nexum_platform::init` sous le capot, puis relie les `DeepLinkEvent` entrants aux idiomes de son framework. Les différences résident dans ce que l'adaptateur vous remet — un handle brut, un signal, un wrapper de vue, ou un lanceur en un seul appel. Utilisez ce guide pour faire correspondre le style d'intégration à votre framework ; les pages de référence liées portent les signatures exactes.
+
+## Tableau de décision
+
+| Vous construisez avec | Ajoutez | Point d'entrée d'intégration | Vous recevez |
+| --- | --- | --- | --- |
+| Floem | `nexum-floem` + fonctionnalité `signal` | `nexum_floem::signal(&config)` | `ReadSignal<Option<String>>` mis à jour sur un thread d'arrière-plan |
+| Xilem | `nexum-xilem` | `nexum_xilem::setup(&config)` puis `with_deep_links(view, on_url)` | Liens profonds routés dans les callbacks de votre vue |
+| Dioxus (desktop) | `nexum-dioxus` | `nexum_dioxus::launch_desktop(&config, desktop_cfg, app)` | Hook `use_deep_link()` → `Signal<Option<String>>` |
+| Leptos (compatible wasm) | `nexum-leptos` + fonctionnalité `signal` | `nexum_leptos::signal(&config)` | `RwSignal<Option<String>>` piloté par `spawn_local` |
+| GPUI / application style Zed | `nexum-gpui` (dép. git) | `nexum_gpui::setup_deep_links(&app, &config)` | `DeepLinkHandle` + `attach_deep_link` dans n'importe quelle `Entity` |
+| Aucun framework | `nexum` ou `nexum-core` | `nexum::platform::init(&config)` | `DeepLinkHandle` brut — bloquant, asynchrone ou flux |
+
+## Utilisation minimale par framework
+
+### Floem
+
+<Code lang="rust" code={`let config = Config::builder().scheme("myapp").build().expect("valid config");
+let url_signal = signal(&config); // ReadSignal<Option<String>>`} />
+
+L'aide `signal` lance un thread d'arrière-plan nommé `nexum-floem` qui bloque sur le handle et alimente le runtime réactif de Floem via `create_signal_from_channel`. Le thread d'UI ne se réveille que lorsqu'une URL arrive.
+
+### Xilem
+
+<Code lang="rust" code={`nexum_xilem::setup(&config).expect("deep-link setup");
+// dans votre logique d'application :
+let content = with_deep_links(base_view, |state: &mut AppState, url| {
+    state.last_url = Some(url);
+});`} />
+
+`with_deep_links` bifurque une tâche Xilem sur votre vue ; le callback tourne sur le thread d'application comme tout autre callback d'événement Xilem.
+
+### Dioxus
+
+<Code lang="rust" code={`#[component]
+fn App() -> Element {
+    let deep_link = use_deep_link(); // Signal<Option<String>>
+    rsx! { p { "Dernier lien profond : {deep_link:?}" } }
+}
+
+// le lancement en un appel câble les événements Opened de tao dans le hub :
+launch_desktop(&nexum_config, desktop_config, app);`} />
+
+`launch_desktop` effectue la configuration, attache le pont `Event::Opened` de tao, et lance votre application — `use_deep_link()` fonctionne alors comme n'importe quel autre hook.
+
+### Leptos
+
+<Code lang="rust" code={`// natif : un seul appel enregistre et renvoie un signal réactif
+let url_signal = signal(&config); // RwSignal<Option<String>>`} />
+
+Dans le navigateur (où l'enregistrement de schéma est impossible), construisez votre propre hub et appelez `signal_from_handle(&hub.handle())` — cela ne touche jamais l'OS et fonctionne sous `wasm32-unknown-unknown`.
+
+### GPUI
+
+<Code lang="rust" code={`let handle = setup_deep_links(&app, &config)?;
+attach_deep_link(handle, view.clone(), cx, |view, _cx, url| {
+    view.set_url(url);
+});`} />
+
+`setup_deep_links` installe le callback `on_open_urls` de GPUI *avant* l'enregistrement OS afin que les événements précoces ne soient pas perdus, et `attach_deep_link` lance une tâche qui réveille votre entité pour chaque URL.
+
+## Règles communes
+
+- Appelez la configuration de l'adaptateur **avant** toute autre consommation — tous les adaptateurs échouent avec `Error::HubAlreadySet` s'ils sont initialisés deux fois, et ceux basés sur un handle paniquent si vous consommez avant la configuration.
+- Les événements apparaissent toujours comme des URL `String` ; analysez-les à la demande avec `DeepLinkEvent::parse_url` ou la crate `url`.
+- Pour une file bornée ou un transfert mono-instance, combinez l'adaptateur avec les guides pertinents — les deux fonctionnent avec chaque adaptateur parce qu'ils vivent dans la couche plateforme.
+
+## Pages de référence des adaptateurs
+
+<LinkCard title="Référence Floem" href="/reference/adapters/floem/" description="setup, signal et notes sur les threads." />
+- <LinkCard title="Référence Xilem" href="/reference/adapters/xilem/" description="setup, handle et with_deep_links." />
+- <LinkCard title="Référence Dioxus" href="/reference/adapters/dioxus/" description="launch_desktop, use_deep_link et le pont tao." />
+- <LinkCard title="Référence Leptos" href="/reference/adapters/leptos/" description="signal, signal_from_handle et support wasm." />
+- <LinkCard title="Référence GPUI" href="/reference/adapters/gpui/" description="setup_deep_links et attach_deep_link." />

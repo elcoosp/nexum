@@ -1,0 +1,45 @@
+---
+title: Référence nexum-gpui
+description: "Adaptateur GPUI — setup_deep_links, attach_deep_link et l'ordre callback-avant-enregistrement."
+type: reference
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+`nexum-gpui` intègre les liens profonds dans les applications GPUI (interfaces style Zed). La crate **n'est pas membre de l'espace de travail** et n'est pas publiée sur crates.io : GPUI lui-même évolue avec la branche `main` de Zed, donc `nexum-gpui` la suit via une dépendance git et est vérifiée séparément. Dépendez-en directement depuis le dépôt :
+
+<Code lang="toml" code={`[dependencies]
+nexum-gpui = { git = "https://github.com/elcoosp/nexum" }`} />
+
+## API
+
+| Fonction | Signature | Description |
+| --- | --- | --- |
+| `setup_deep_links` | `fn setup_deep_links(app: &gpui::Application, config: &Config) -> Result<DeepLinkHandle>` | Crée un hub, installe le pont `on_open_urls` de GPUI, enregistre auprès de l'OS, renvoie le handle consommateur |
+| `attach_deep_link` | `fn attach_deep_link<V: 'static>(handle: DeepLinkHandle, view: Entity<V>, cx: &mut App, on_url: impl Fn(&mut V, &mut gpui::Context<V>, String) + 'static)` | Lance une tâche asynchrone GPUI qui réveille votre entité à chaque URL |
+
+## Garantie d'ordre
+
+`setup_deep_links` effectue ses étapes délibérément : il appelle `app.on_open_urls(...)` **avant** `nexum_platform::register(config)`. Si l'OS commence à livrer des URL dès que l'enregistrement se termine, le callback est déjà installé et les événements ne sont pas perdus. Chaque URL reçue par le callback est poussée dans le hub global avec `nexum_platform::push_url` (erreurs ignorées, comme pour tous les ponts fire-and-forget).
+
+Appeler `setup_deep_links` une seconde fois échoue avec `Error::HubAlreadySet` — le hub global ne peut être installé qu'une fois par processus.
+
+## Recevoir des URL dans une vue
+
+<Code lang="rust" code={`let handle = setup_deep_links(&app, &config)?;
+
+// après avoir ouvert une fenêtre et créé l'entité de votre vue :
+attach_deep_link(handle, view.clone(), cx, |view, _cx, url| {
+    view.set_url(url);
+});`} />
+
+`attach_deep_link` lance une tâche sur l'exécuteur de GPUI et la détache : pour chaque URL reçue, elle met à jour l'entité via `view.update(...)` et appelle `cx.notify()` pour que GPUI se re-rend. La tâche vit aussi longtemps que l'application ou jusqu'à l'arrêt du canal.
+
+<Aside type="tip">
+La signature du callback reflète les propres fermetures de mise à jour de GPUI — `(&mut V, &mut Context<V>, String)` — donc la mutation d'état et l'invalidation de rendu suivent les règles normales du framework.
+</Aside>
+
+## Étapes suivantes
+
+- <LinkCard title="Choisir un adaptateur" href="/guides/choosing-an-adapter/" description="Comment l'intégration GPUI se compare." />
+- <LinkCard title="Référence de plateforme" href="/reference/platform/" description="register et le hub global que le pont alimente." />

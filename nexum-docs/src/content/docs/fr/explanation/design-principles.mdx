@@ -1,0 +1,51 @@
+---
+title: Principes de conception
+description: "Les décisions d'ingénierie derrière nexum — événements en chaînes seules, transport agnostique vis-à-vis de l'exécuteur, garanties de sûreté, et la barre de qualité."
+type: explanation
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+La surface publique de nexum paraît petite parce que plusieurs décisions délibérées la maintiennent petite. Cette page consigne le raisonnement pour que les choix — et leurs compromis — restent lisibles pour les contributeurs et les relecteurs.
+
+## Les événements sont des chaînes brutes, analysées paresseusement
+
+Le hub stocke des URL `String`, et `DeepLinkEvent::parse_url` analyse à la demande. L'alternative — analyser en `url::Url` au moment du push — ferait payer la validation à chaque producteur, forcerait les types de la crate `url` dans le chemin chaud, et transformerait une URL malformée en panique côté producteur ou en canal d'erreur dont personne n'a demandé. Avec l'analyse paresseuse, le chemin de push est infaillible et bon marché en allocations, et la rare URL malformée devient un élément `Some(Err(_))` normal sur `recv_url` au lieu de bloquer le consommateur.
+
+## Un seul transport, n'importe quel exécuteur
+
+La file est `async-channel`. Ce choix unique offre : des méthodes de réception asynchrones qui tournent sur tokio, async-std, smol, l'exécuteur GPUI ou une boucle d'événements wasm sans cale d'adaptateur ; des enveloppes bloquantes (`recv_blocking`) pour le code à threads natifs ; et le support wasm où le blocage est entièrement compilé hors du binaire. Les adaptateurs relaient ensuite le handle dans la réactivité de leur framework — signaux, tâches, hooks — sans que nexum ne dépende jamais d'un framework.
+
+## Sûreté et discipline de surface
+
+- `nexum-core` est `#![forbid(unsafe_code)]` ; l'unsafe n'existe que là où l'OS l'exige (colle Objective-C macOS, harnais de test mono-instance).
+- Chaque élément public de l'espace de travail porte un commentaire de documentation (`missing_docs` est appliqué), et les lints de l'espace de travail exécutent clippy en mode `pedantic` — sans aucun `allow`.
+- Rien n'est activé par défaut : chaque crate déclare `default = []`, donc `cargo add` ne tire que la couche plateforme dont vous avez besoin. Les fonctionnalités (`stream`, `single-instance`, `signal`) sont de purs opt-ins.
+- La macro panique fort en cas de mauvaise configuration plutôt que de continuer silencieusement, tandis que le chemin faillible (`platform::init`) reste disponible pour les applications qui doivent se rétablir.
+
+## La barre de qualité
+
+La CI applique la barre que la documentation hérite du code :
+
+| Vérification | Verrou |
+| --- | --- |
+| Formatage et lints | `cargo fmt --check`, `clippy --workspace --all-targets --all-features -D warnings` |
+| Tests | Matrice 3-OS, `--all-features` |
+| Couverture | 100 % de couverture de lignes sur `nexum-core`, `nexum-platform`, `nexum-floem`, `nexum-leptos` via `cargo-llvm-cov --fail-under-lines 100` |
+| MSRV | `cargo check` sur exactement 1.85 pour les crates de base ; 1.88 pour l'adaptateur leptos |
+| Cibles croisées | Backends macOS, Windows, Android, iOS vérifiés sur leurs vraies cibles ; wasm32 pour le cœur et leptos |
+| Docs | `cargo doc` avec `-D warnings` ; chaque élément public documenté |
+| Chaîne d'approvisionnement | `cargo-deny` hebdomadaire et mises à jour Dependabot |
+
+La politique de couverture est inhabituelle et intentionnelle : les crates de logique (core, platform, floem, leptos) doivent garder chaque ligne testée — l'état global utilise un seul test d'intégration sérialisé, le protocole filaire mono-instance est testé contre des flux en mémoire, et la fonction de relais de chaque adaptateur est factorisée pour pouvoir être pilotée sans tête. Les crates d'adaptateur dont la valeur est surtout de la colle framework (xilem, dioxus, gpui, macros) sont en rapport-seulement sous la même politique.
+
+## Versionnage et versions publiées
+
+L'espace de travail est publié en une seule version (actuellement **0.3.0**, MSRV 1.85, édition 2024, double licence MIT OR Apache-2.0). Les journaux de modification sont générés à partir des Conventional Commits avec git-cliff au moment du tag, et les crates sont publiées dans l'ordre des dépendances — core, platform, adaptateurs, macros, puis la façade. `nexum-gpui` est l'exception délibérée : parce qu'elle suit la branche `main` de Zed via une dépendance git, elle ne peut pas être publiée sur crates.io et est consommée directement depuis le dépôt.
+
+<Aside type="tip">
+Les raisonnements de conception dans le dépôt vivent dans docs/BRAINSTORM.md (registre des décisions) et docs/COVERAGE.md (la stratégie de couverture) — cette page résume les parties qui façonnent l'API publique.
+</Aside>
+
+- <LinkCard title="Architecture expliquée" href="/explanation/architecture/" description="La stratification que ces principes produisent." />
+- <LinkCard title="Référence des erreurs" href="/reference/errors/" description="Comment les décisions se manifestent dans le modèle d'erreur." />

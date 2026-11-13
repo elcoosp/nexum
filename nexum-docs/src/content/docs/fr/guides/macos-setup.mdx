@@ -1,0 +1,58 @@
+---
+title: Configurer les liens profonds sous macOS
+description: "Déclarez vos schémas d'URL dans Info.plist, validez le bundle à l'exécution, et comprenez comment nexum reçoit les Apple Events GURL."
+type: how-to
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+Sous macOS, nexum effectue deux tâches distinctes : à l'**exécution** il installe un gestionnaire d'Apple events qui reçoit les événements `GURL` pour les URL que l'OS distribue à votre application *en cours d'exécution*, et au moment de l'**empaquetage** vous devez déclarer les schémas dans le `Info.plist` du bundle d'application. La bibliothèque n'édite jamais votre plist pour vous — elle génère à la place le XML dont vous avez besoin et vérifie que le bundle construit correspond à votre `Config`.
+
+## Déclarer les schémas dans Info.plist
+
+Ajoutez une entrée `CFBundleURLTypes` listant chaque schéma de votre `Config`. Générez le XML exact que nexum attend avec `url_types_xml`, qui rend le bloc complet `<key>CFBundleURLTypes</key><array>…</array>` :
+
+<Code lang="rust" code={`use nexum_core::Config;
+use nexum_platform::plist;
+
+let config = Config::builder().scheme("myapp").build().expect("valid config");
+println!("{}", plist::url_types_xml(&config));`} />
+
+Si vous empaquetez avec `cargo-bundle`, la clé `osx_url_schemes` de `[package.metadata.bundle]` produit la même déclaration :
+
+<Code lang="toml" code={`[package.metadata.bundle]
+identifier = "com.example.myapp"
+osx_url_schemes = ["myapp"]`} />
+
+Les applications d'exemple du dépôt nexum utilisent exactement ce mécanisme.
+
+## Valider le bundle construit
+
+`validate_bundle` (ré-exportée depuis `nexum_platform` sur les cibles macOS) lit le `Contents/Info.plist` du bundle en cours — ou directement `Info.plist` pour les dispositions style iOS — et renvoie chaque schéma configuré que le plist ne déclare **pas** :
+
+<Code lang="rust" code={`let missing = nexum_platform::validate_bundle(&config).expect("readable plist");
+if !missing.is_empty() {
+    eprintln!("schemes missing from Info.plist: {missing:?}");
+}`} />
+
+Pour une vérification au niveau du texte sans toucher le bundle, `plist::missing_schemes` compare tout XML de plist à un `Config` sans tenir compte de la casse (Apple met en minuscules les chaînes de schéma) et tolère un formatage arbitraire :
+
+<Code lang="rust" code={`let missing = nexum_platform::plist::missing_schemes(&plist_xml, &config);`} />
+
+Un plist cassé ou vide rapporte *tous* les schémas comme manquants — la fonction ne panique jamais.
+
+<Aside type="danger">
+Exécutez `register` sur le thread principal. Sous macOS, il installe le délégué d'Apple events via `NSAppleEventManager`, et l'appeler hors du thread principal renvoie `Error::Platform("deep links must be registered on the main thread")`. Le bootstrap `#[deep_link]` s'exécute en haut de `main`, ce qui satisfait cette exigence sur toutes les plateformes.
+</Aside>
+
+## Comment fonctionne la livraison à l'exécution
+
+Quand l'utilisateur ouvre `myapp://open/settings` alors que votre application tourne, l'OS envoie un Apple event `GURL` au processus. Le délégué de nexum extrait le descripteur `keyDirectObject` et pousse la chaîne d'URL dans le hub. Deux comportements valent d'être connus précisément :
+
+1. **Source de livraison** — les événements GURL sont poussés via `push_launch_url`, donc le `DeepLinkEvent` résultant porte `Source::CommandLine` plutôt que `Source::System`. Traitez les deux sources comme des sémantiques *démarrage à froid* versus *exécution à chaud* avec soin sous macOS ; voir [Sources d'événements expliquées](/explanation/event-sources/).
+2. **Démarrage à froid** — lorsque l'OS lance votre application pour une URL, l'URL n'arrive pas sur la ligne de commande comme sous Windows et Linux ; elle arrive sous forme d'événement `GURL` juste après le démarrage, une fois le délégué installé.
+
+## Étapes suivantes
+
+- <LinkCard title="Référence de l'API de plateforme" href="/reference/platform/" description="Signatures de init, register, validate_bundle et du module plist." />
+- <LinkCard title="Sources d'événements expliquées" href="/explanation/event-sources/" description="Sémantique de livraison System versus CommandLine." />

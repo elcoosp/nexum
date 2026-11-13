@@ -1,0 +1,53 @@
+---
+title: Référence nexum-leptos
+description: "Adaptateur Leptos — setup, signaux réactifs, fonctionnement sûr pour le navigateur sous wasm32 et MSRV relevé."
+type: reference
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+`nexum-leptos` relie les liens profonds au système réactif de Leptos, et contrairement aux adaptateurs de bureau, elle vérifie les types pour le navigateur : `wasm32-unknown-unknown` est une cible supportée, l'étape d'enregistrement étant factorisée pour que les builds navigateur puissent s'exécuter sans toucher l'OS. L'adaptateur élève son propre MSRV à **1.88** pour suivre la ligne leptos 0.9 (il suit le candidat de version 0.9 avec `default-features = false`, ne tirant que le cœur réactif).
+
+## API
+
+| Élément | Signature | Fonctionnalité | Description |
+| --- | --- | --- | --- |
+| `setup` | `fn setup(config: &Config) -> Result<DeepLinkHandle>` | toujours | Enveloppe au-dessus de `nexum_platform::init` ; aucune dépendance à leptos nécessaire |
+| `signal` | `fn signal(config: &Config) -> RwSignal<Option<String>>` | `signal` | Enregistre (**panique** en cas d'échec) et renvoie le signal réactif |
+| `signal_from_handle` | `fn signal_from_handle(handle: &DeepLinkHandle) -> RwSignal<Option<String>>` | `signal` | Signal depuis un handle existant — **ne touche jamais l'OS**, sûr pour le navigateur |
+| `relay_to_signal` | `async fn relay_to_signal(handle: DeepLinkHandle, signal: RwSignal<Option<String>>)` | `signal` | La boucle de relais publique, disponible pour un câblage personnalisé |
+
+Tout ce qui est en aval est du code réactif ordinaire : `signal_from_handle` crée `RwSignal::new(None)` et lance le relais avec `spawn_local`.
+
+## Utilisation native
+
+<Code lang="rust" code={`let url_signal = nexum_leptos::signal(&config); // RwSignal<Option<String>>`} />
+
+`signal` appelle `setup` en interne et attend que l'enregistrement réussisse (`nexum-leptos: deep-link registration failed` en cas d'échec). Le `RwSignal` renvoyé démarre à `None` et est remplacé par chaque URL.
+
+## Utilisation navigateur (wasm32)
+
+Un navigateur ne peut pas enregistrer de schémas d'URL, donc inversez le flux : possédez un hub vous-même, exposez-lui des URL de lien profond (par exemple depuis un paramètre de requête `?url=` ou un harnais de test), et dérivez le signal depuis le handle :
+
+<Code lang="rust" code={`let hub = DeepLinkHub::new();
+let url_signal = signal_from_handle(&hub.handle()); // aucun accès à l'OS
+hub.push_url("myapp://demo/open");`} />
+
+`signal_from_handle` lance le relais avec `spawn_local`, ce qui nécessite un exécuteur asynchrone initialisé — Leptos en configure un dans `mount_to_body` côté web (et les runtimes SSR font de même côté serveur). Les tests propres de l'adaptateur pilotent le pont identique sans tête sur un `LocalSet` tokio, donc le comportement wasm est couvert sans navigateur.
+
+## Drapeaux de fonctionnalité
+
+| Fonctionnalité | Par défaut | Tire | Active |
+| --- | --- | --- | --- |
+| `signal` | off | `leptos` 0.9 (cœur réactif uniquement) | `signal`, `signal_from_handle`, `relay_to_signal` |
+
+Sans la fonctionnalité, vous obtenez `setup` et le `DeepLinkHandle` brut — assez pour câbler vous-même n'importe quel motif de consommation.
+
+<Aside type="danger">
+Exigez Rust 1.88 ou plus récent lors de l'utilisation de cet adaptateur (la base de l'espace de travail à 1.85 ne s'applique pas ici). La CI vérifie les types de `nexum-leptos` et de l'exemple leptos pour `wasm32-unknown-unknown`.
+</Aside>
+
+## Étapes suivantes
+
+- <LinkCard title="Sources d'événements expliquées" href="/explanation/event-sources/" description="Classer les événements System versus CommandLine dans la démo navigateur." />
+- <LinkCard title="Référence du cœur" href="/reference/core/" description="La paire hub/handle qu'utilise le chemin navigateur." />

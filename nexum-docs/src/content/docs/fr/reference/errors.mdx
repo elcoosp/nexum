@@ -1,0 +1,49 @@
+---
+title: Référence des erreurs
+description: "Chaque variante de nexum_core::Error avec son message d'affichage exact et les situations qui la produisent."
+type: reference
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+Toute la pile nexum partage un seul type d'erreur : `nexum_core::Error`, construit avec `thiserror`. L'alias `Result<T, E = Error>` est ré-exporté à côté, et `Error` est `Send + Sync + 'static` donc il traverse librement les threads et les tâches.
+
+| Variante | Message d'affichage | Produite par |
+| --- | --- | --- |
+| `NoSchemes` | `at least one URL scheme must be configured` | `Config::validate` ou `ConfigBuilder::build` avec zéro schéma |
+| `InvalidScheme(String)` | `` `{0}` is not a valid URL scheme (RFC 3986: ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )) `` | Schéma échouant au contrôle de grammaire RFC 3986 |
+| `InvalidHost(String)` | `` `{0}` is not a valid app-link host `` | App link avec un hôte vide |
+| `HubAlreadySet` | `the deep-link hub is already initialized for this process` | `set_hub` ou `init`/`init_with` appelé une seconde fois (y compris la configuration interne des adaptateurs) |
+| `HubNotSet` | `no deep-link hub is initialized yet; call nexum_platform::init first` | Opération de plateforme (`push_url`, `single_instance::acquire`, entrée mobile) avant initialisation |
+| `HubClosed` | `the deep-link channel has been shut down` | Réception bloquante après que tous les émetteurs et récepteurs ont été abandonnés |
+| `QueueFull` | `the bounded deep-link queue is full` | `try_push_*` sur un hub borné à capacité |
+| `MalformedUrl(String, url::ParseError)` | `` `{0}` is not a valid URL: {1} `` | Échec d'analyse paresseuse via `DeepLinkEvent::parse_url` ou les éléments de `recv_url` |
+| `Platform(String)` | `platform registration failed: {0}` | Échecs spécifiques au backend : code de sortie non nul de `xdg-mime`, violation de thread principal sous macOS, erreurs de protocole mono-instance |
+| `Io(std::io::Error)` | *(transparent)* | E/S de système de fichiers et de socket sous-jacentes à l'enregistrement |
+
+## Exemples de correspondance
+
+Les variantes d'erreur sont de simples variantes d'énumération, donc `matches!` est la garde idiomatique :
+
+<Code lang="rust" code={`use nexum_core::{Config, Error};
+
+let err = Config::builder().build().expect_err("no schemes");
+assert!(matches!(err, Error::NoSchemes));
+
+let err = Config::validate_scheme("1bad").expect_err("bad scheme");
+assert!(matches!(err, Error::InvalidScheme(_)));`} />
+
+## Conseils de rétablissement
+
+- `NoSchemes`, `InvalidScheme`, `InvalidHost` sont des bogues de configuration — échouez vite au démarrage.
+- `HubAlreadySet` indique une double initialisation ; les adaptateurs exposent la même variante quand leur propre configuration s'exécute deux fois.
+- `HubNotSet` signifie une erreur d'ordonnancement : initialisez le hub avant tout push, entrée ou appel `acquire`.
+- `HubClosed` et `QueueFull` sont du *contrôle de flux*, pas des défauts : les consommateurs se sont arrêtés ou la contre-pression s'est activée. Traitez-les dans la logique de réessai/arrêt de votre boucle de consommation.
+- `Platform` enveloppe la plus grande classe de problèmes d'environnement — `xdg-mime` manquant, un enregistrement hors thread principal sous macOS, ou des désaccords de protocole mono-instance. La chaîne interne nomme la cause exacte et est assez stable pour être journalisée mot pour mot.
+
+<Aside type="tip">
+`Io` est transparent (`#[from]`), donc `?` convertit automatiquement un `std::io::Error` en `Error` dans le code de colle faillible.
+</Aside>
+
+- <LinkCard title="Référence du cœur" href="/reference/core/" description="Les API Config et hub qui produisent ces erreurs." />
+- <LinkCard title="Référence de plateforme" href="/reference/platform/" description="Les fonctions d'enregistrement et leur comportement d'erreur." />

@@ -1,0 +1,57 @@
+---
+title: Configurer les liens profonds sous Linux
+description: "Apprenez comment nexum écrit une entrée .desktop, lie les schémas avec xdg-mime, et où chercher quand l'enregistrement échoue."
+type: how-to
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+Sous Linux, nexum enregistre les schémas d'URL de manière conforme aux standards : il écrit une entrée freedesktop `.desktop` dans le répertoire d'applications de votre utilisateur et demande à `xdg-mime` de lier chaque schéma à cette entrée. Tout se passe dans `nexum::platform::register`, que `init` et le bootstrap `#[deep_link]` appellent pour vous.
+
+## Le flux d'enregistrement
+
+1. nexum résout l'exécutable en cours avec `std::env::current_exe()` et dérive un nom d'application à partir de sa racine de fichier, en ne gardant que `[A-Za-z0-9._-]`. Si rien ne survit à la sanitisation, le nom de repli est `nexum-app`.
+2. Il crée `{data_local_dir}/applications/` si nécessaire et écrit `{app_name}.desktop`. Le répertoire vient de `dirs::data_local_dir()`, donc `XDG_DATA_HOME` est honoré lorsqu'il est défini.
+3. Pour chaque schéma configuré, il invoque :
+
+<Code lang="bash" code={`xdg-mime default {app_name}.desktop x-scheme-handler/{scheme}`} />
+
+Un code de sortie non nul de `xdg-mime` apparaît comme `Error::Platform` — signifiant typiquement que l'outil n'est pas installé (`sudo apt install xdg-utils` sur les systèmes basés sur Debian) ou que l'environnement n'a pas de base MIME utilisable.
+
+## L'entrée desktop générée
+
+L'entrée que nexum écrit suit exactement ce modèle :
+
+<Code lang="ini" code={`[Desktop Entry]
+Type=Application
+Name={app_name}
+Exec={quoted_exec} %u
+StartupNotify=false
+Icon={icon}
+MimeType=x-scheme-handler/myapp;x-scheme-handler/other;`} />
+
+Deux détails valent la peine d'être connus :
+
+- **Guillemets de `Exec`** — le chemin de l'exécutable est émis via une aide de mise entre guillemets : les signes `%` sont doublés (`%` → `%%`) pour survivre aux codes de champ freedesktop, et le chemin est entouré de guillemets doubles (avec les guillemets intégrés échappés) dès qu'il contient des espaces.
+- **Repli de `Icon`** — lorsque `Config::icon_path` n'est pas défini, l'entrée se rabat sur le chemin de l'exécutable lui-même, de sorte que l'association MIME se résolve toujours proprement.
+
+Vous définissez les deux valeurs via la configuration :
+
+<Code lang="rust" code={`let config = Config::builder()
+    .scheme("myapp")
+    .icon_path("/usr/share/icons/myapp.png")
+    .build()
+    .expect("valid config");`} />
+
+## Comment les URL atteignent votre application
+
+Le code de champ `%u` fait que l'OS démarre votre exécutable avec l'URL comme argument — la même forme de démarrage à froid par ligne de commande que sous Windows. `register` relaie ces arguments dans le hub via `Config::extract_launch_urls`, produisant des `DeepLinkEvent` avec `Source::CommandLine`. Un second lancement consomme donc sa propre URL à moins que vous n'activiez le [transfert mono-instance](/guides/single-instance/), qui la transmet à l'instance d'origine via un socket Unix.
+
+<Aside type="danger">
+L'enregistrement est idempotent mais réinvoqué à chaque lancement. Si vous déplacez ou renommez l'exécutable, l'entrée `.desktop` obsolète reste jusqu'à ce que l'enregistrement suivant la remplace sous le nouveau nom d'application.
+</Aside>
+
+## Étapes suivantes
+
+- <LinkCard title="Transfert mono-instance" href="/guides/single-instance/" description="Transférez les URL des secondes instances via un socket Unix." />
+- <LinkCard title="Référence de l'API de plateforme" href="/reference/platform/" description="Les signatures init et register et le comportement des erreurs." />

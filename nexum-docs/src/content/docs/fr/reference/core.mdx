@@ -1,0 +1,121 @@
+---
+title: Référence nexum-core
+description: "Config, ConfigBuilder, AppLink, DeepLinkHub, DeepLinkHandle, DeepLinkEvent, Source et DeepLinkStream — les primitives indépendantes du framework."
+type: reference
+---
+
+import { Code, LinkCard } from '@astrojs/starlight/components';
+
+`nexum-core` contient tout ce qui ne touche pas le système d'exploitation : la configuration, le canal d'événements producteur-consommateur et le type d'événement. Tous les éléments sont ré-exportés à plat depuis la racine de la crate, et la crate compile avec `#![forbid(unsafe_code)]`. Le transport est `async-channel`, donc chaque API asynchrone fonctionne sur n'importe quel exécuteur — et sur wasm.
+
+## Config
+
+Décrit ce que votre application possède et comment elle se présente à l'OS.
+
+| Champ | Type | Défaut | Description |
+| --- | --- | --- | --- |
+| `schemes` | `Vec<String>` | `[]` | Schémas d'URL que l'application gère, par ex. `myapp` |
+| `app_links` | `Vec<AppLink>` | `[]` | App links (liens universels) que l'application revendique |
+| `icon_path` | `Option<PathBuf>` | `None` | Icône du gestionnaire de protocole OS (`DefaultIcon` Windows, `Icon=` Linux) |
+
+| Méthode | Signature | Description |
+| --- | --- | --- |
+| `new` | `fn new(schemes: impl IntoIterator<Item: Into<String>>) -> Self` | Constructeur depuis les schémas, adapté à la syntaxe struct |
+| `builder` | `fn builder() -> ConfigBuilder` | Renvoie un builder neuf |
+| `with_app_links` | `fn with_app_links(self, links: impl IntoIterator<Item = AppLink>) -> Self` | **Remplace** la liste d'app links |
+| `with_app_link` | `fn with_app_link(self, link: AppLink) -> Self` | Ajoute un app link |
+| `with_icon_path` | `fn with_icon_path(self, path: impl Into<PathBuf>) -> Self` | Définit le chemin de l'icône |
+| `validate` | `fn validate(&self) -> Result<()>` | Vérifie les schémas contre la grammaire RFC 3986 et les hôtes d'app link |
+| `validate_scheme` | `fn validate_scheme(scheme: &str) -> Result<()>` | Fonction associée : premier caractère alphabétique ASCII, puis alphanumériques ou `+ - .` |
+| `extract_launch_urls` | `fn extract_launch_urls<I>(&self, args: I) -> Vec<String>` | Garde chaque argument qui s'analyse comme URL absolue avec un schéma configuré (sans tenir compte de la casse) ; préserve l'ordre ; accepte les URL de schéma seul comme `myapp:` |
+
+## ConfigBuilder
+
+| Méthode | Signature | Description |
+| --- | --- | --- |
+| `scheme` | `fn scheme(self, scheme: impl Into<String>) -> Self` | Ajoute un schéma |
+| `schemes` | `fn schemes(self, schemes: impl IntoIterator<Item: Into<String>>) -> Self` | Ajoute plusieurs schémas |
+| `app_link` | `fn app_link(self, link: AppLink) -> Self` | Ajoute un app link |
+| `app_links` | `fn app_links(self, links: impl IntoIterator<Item = AppLink>) -> Self` | Ajoute plusieurs app links |
+| `icon_path` | `fn icon_path(self, path: impl Into<PathBuf>) -> Self` | Définit le chemin de l'icône |
+| `build` | `fn build(self) -> Result<Config>` | Construit et exécute `validate` ; un builder vide échoue avec `Error::NoSchemes` |
+
+## AppLink
+
+| Champ / méthode | Type ou signature | Description |
+| --- | --- | --- |
+| `host` | `String` | L'hôte que cette application revendique, par ex. `example.com` |
+| `path_prefixes` | `Vec<String>` | Chaque entrée commence par `/` ; une liste vide revendique l'hôte entier |
+| `new` | `fn new(host: impl Into<String>, path_prefixes: impl IntoIterator<Item: Into<String>>) -> Self` | Constructeur |
+
+## DeepLinkHub — le producteur
+
+Le hub possède la file d'événements. C'est un canal multi-producteur, **multi-consommateur** : chaque événement va à exactement un consommateur, choisi en round-robin parmi les récepteurs actifs. Clonez les handles pour le partage de charge ; il n'y a pas de diffusion.
+
+| Méthode | Signature | Description |
+| --- | --- | --- |
+| `new` | `fn new() -> Self` | File non bornée (aussi `Default`) |
+| `bounded` | `fn bounded(capacity: usize) -> Self` | Capacité ramenée à au moins 1 ; voir le [guide borné](/guides/bounded-hub/) |
+| `capacity` | `fn capacity(&self) -> Option<usize>` | `None` signifie non bornée |
+| `sender` | `fn sender(&self) -> async_channel::Sender<DeepLinkEvent>` | Échappatoire pour des ponts framework personnalisés |
+| `push_url` | `fn push_url(&self, url: impl Into<String>)` | Pousse avec `Source::System` ; bloque quand une file bornée est pleine ; abandonne silencieusement après arrêt |
+| `push_launch_url` | `fn push_launch_url(&self, url: impl Into<String>)` | Pousse avec `Source::CommandLine` |
+| `try_push_url` | `fn try_push_url(&self, url: impl Into<String>) -> Result<(), Error>` | Non bloquant ; `QueueFull` ou `HubClosed` |
+| `try_push_launch_url` | `fn try_push_launch_url(&self, url: impl Into<String>) -> Result<(), Error>` | Idem, avec `Source::CommandLine` |
+| `push_event` | `fn push_event(&self, event: DeepLinkEvent)` | Pousse un événement pré-construit, en gardant sa source |
+| `try_push_event` | `fn try_push_event(&self, event: DeepLinkEvent) -> Result<(), Error>` | Variante non bloquante |
+| `handle` | `fn handle(&self) -> DeepLinkHandle` | Crée un consommateur supplémentaire |
+
+<Code lang="rust" code={`use nexum_core::{Config, DeepLinkHub, Source};
+
+let config = Config::new(["myapp"]).validate().expect("valid config");
+let hub = DeepLinkHub::new();
+let handle = hub.handle();
+
+hub.push_url("myapp://open/settings");
+assert_eq!(handle.try_recv().as_deref(), Some("myapp://open/settings"));
+
+hub.push_launch_url("myapp://open/doc/42");
+let event = handle.recv_event_blocking().expect("event");
+assert_eq!(event.source, Source::CommandLine);`} />
+
+## DeepLinkHandle — le consommateur
+
+`DeepLinkHandle` est `Clone` ; chaque clone est un consommateur indépendant dans le round-robin. Les méthodes bloquantes sont indisponibles sur les cibles wasm.
+
+| Méthode | Signature | Notes |
+| --- | --- | --- |
+| `new` | `fn new(rx: Receiver<DeepLinkEvent>) -> Self` | Adopte n'importe quel récepteur `async_channel` brut |
+| `recv` | `async fn recv(&self) -> Option<String>` | `None` après arrêt |
+| `recv_event` | `async fn recv_event(&self) -> Option<DeepLinkEvent>` | Variante asynchrone avec source |
+| `recv_url` | `async fn recv_url(&self) -> Option<Result<url::Url>>` | Une URL malformée arrive comme `Some(Err(_))` |
+| `recv_blocking` | `fn recv_blocking(&self) -> Result<String>` | Natif uniquement ; `Error::HubClosed` à l'arrêt |
+| `recv_event_blocking` | `fn recv_event_blocking(&self) -> Result<DeepLinkEvent>` | Natif uniquement |
+| `try_recv` | `fn try_recv(&self) -> Option<String>` | `None` quand vide *ou* fermé (indistinguable) |
+| `try_recv_event` | `fn try_recv_event(&self) -> Option<DeepLinkEvent>` | Même sémantique |
+| `drain` | `fn drain(&self) -> Vec<String>` | Toutes les URL actuellement en file, dans l'ordre |
+| `drain_events` | `fn drain_events(&self) -> Vec<DeepLinkEvent>` | Idem pour les événements complets |
+| `into_stream` | `fn into_stream(self) -> DeepLinkStream` | Requiert la fonctionnalité `stream` |
+
+## DeepLinkEvent et Source
+
+| Champ / méthode | Type ou signature | Description |
+| --- | --- | --- |
+| `url` | `String` | La chaîne d'URL brute telle que reçue |
+| `source` | `Source` | D'où l'événement provient |
+| `new` | `fn new(url: impl Into<String>, source: Source) -> Self` | Constructeur |
+| `parse_url` | `fn parse_url(&self) -> Result<url::Url>` | Analyse paresseuse ; `Error::MalformedUrl` en cas d'échec |
+
+| Variante `Source` | Signification |
+| --- | --- |
+| `System` *(défaut)* | Livré par l'OS alors qu'il était déjà en cours — transfert registre (Windows), Apple event (macOS), transfert relayé, entrée mobile |
+| `CommandLine` | Trouvé sur la ligne de commande de ce processus — démarrage à froid sous Windows et Linux, Apple events `GURL` macOS (voir [sources d'événements](/explanation/event-sources/)) |
+
+## DeepLinkStream
+
+Avec la fonctionnalité `stream`, `into_stream` convertit un handle en `DeepLinkStream`, qui implémente `futures_core::Stream` avec `Item = String`. Le flux se termine lorsque le canal s'arrête.
+
+## Étapes suivantes
+
+- <LinkCard title="Référence des erreurs" href="/reference/errors/" description="Chaque variante d'Error et quand elle apparaît." />
+- <LinkCard title="Référence de plateforme" href="/reference/platform/" description="Enregistrement OS et hub global." />

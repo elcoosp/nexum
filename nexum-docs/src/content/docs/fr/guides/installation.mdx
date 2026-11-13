@@ -1,0 +1,69 @@
+---
+title: Installer Nexum
+description: "Choisissez la bonne combinaison de crates pour votre application — façade, cœur plus plateforme, ou un adaptateur de framework — et déclarez les drapeaux de fonctionnalité correspondants."
+type: how-to
+---
+
+import { Code, LinkCard, TabItem, Tabs } from '@astrojs/starlight/components';
+
+Chaque crate nexum est publiée depuis le même espace de travail à la même version, donc vous installez l'une de trois formes : la **façade** pour l'expérience à une seule dépendance, **cœur plus plateforme** quand vous voulez un contrôle explicite sans la macro, ou un **adaptateur de framework** pour recevoir les événements via les propres types réactifs de votre framework UI.
+
+<Tabs>
+    <TabItem label="Façade (recommandé)">
+<Code lang="toml" code={`[dependencies]
+nexum = "0.3"`} />
+
+        La façade ré-exporte `Config`, `DeepLinkHub`, `DeepLinkHandle`, l'attribut `#[deep_link]` et tout le module `platform`. Utilisez-la pour les applications de bureau qui veulent le chemin le plus court de la dépendance au lien profond fonctionnel.
+    </TabItem>
+    <TabItem label="Cœur + plateforme">
+<Code lang="toml" code={`[dependencies]
+nexum-core = "0.3"
+nexum-platform = "0.3"`} />
+
+        Utilisez cette forme lorsque vous ne voulez pas de macro d'attribut dans votre build, ou lorsque vous câblez l'enregistrement vous-même — par exemple dans une fonction d'amorçage existante avec une gestion d'erreur personnalisée autour de `nexum_platform::init`.
+    </TabItem>
+    <TabItem label="Adaptateur de framework">
+<Code lang="toml" code={`[dependencies]
+# Floem — la fonctionnalité \`signal\` tire floem lui-même
+nexum-floem = { version = "0.3", features = ["signal"] }
+
+# Xilem
+nexum-xilem = "0.3"
+
+# Dioxus (desktop)
+nexum-dioxus = "0.3"
+
+# Leptos — la fonctionnalité \`signal\` tire le cœur réactif de leptos
+nexum-leptos = { version = "0.3", features = ["signal"] }`} />
+
+        `nexum-gpui` n'est pas publiée sur crates.io parce qu'elle suit la branche `main` de Zed via une dépendance git. Dépendez-en directement depuis le dépôt :
+
+<Code lang="toml" code={`[dependencies]
+nexum-gpui = { git = "https://github.com/elcoosp/nexum" }`} />
+    </TabItem>
+</Tabs>
+
+## Drapeaux de fonctionnalité
+
+| Crate | Fonctionnalité | Active |
+| --- | --- | --- |
+| `nexum` | `stream` | `DeepLinkStream` (ré-exportée du cœur) : consommer les URL comme un `Stream` |
+| `nexum` | `single-instance` | Transfert de seconde instance via `nexum::platform::single_instance` |
+| `nexum-core` | `stream` | `DeepLinkHandle::into_stream()` et le type `DeepLinkStream` |
+| `nexum-platform` | `single-instance` | Le module `single_instance` (sockets Unix / loopback Windows) |
+| `nexum-floem` | `signal` | `signal()` → Floem `ReadSignal<Option<String>>` (tire `floem`) |
+| `nexum-leptos` | `signal` | `signal()` et `signal_from_handle()` → `RwSignal<Option<String>>` (tire le cœur réactif de leptos) |
+
+Aucune de ces fonctionnalités n'est active par défaut — chaque crate déclare `default = []`, donc les dépendances restent minimales tant que vous ne souscrivez pas.
+
+## Exigences
+
+- **Rust 1.85 ou plus récent** — l'espace de travail utilise l'édition 2024 et déclare `rust-version = "1.85"`. La CI vérifie les types des crates de base sur exactement 1.85.
+- **Rust 1.88 ou plus récent pour `nexum-leptos`** — l'adaptateur élève son propre MSRV pour suivre la ligne leptos 0.9, et il vérifie les types pour la cible `wasm32-unknown-unknown`.
+- **Linux** — l'outil `xdg-mime` doit être installé au moment de l'exécution ; l'enregistrement l'invoque une fois par schéma.
+- **macOS** — l'enregistrement doit s'exécuter sur le thread principal ; les applications empaquetées déclarent les schémas dans `Info.plist` (voir le [guide de configuration macOS](/guides/macos-setup/)).
+
+## Étapes suivantes
+
+- <LinkCard title="Construire votre premier lien profond" href="/tutorials/getting-started/" description="Un parcours complet d'un projet Cargo vide à une URL reçue." />
+- <LinkCard title="Choisir un adaptateur" href="/guides/choosing-an-adapter/" description="Comparaison côte à côte des cinq intégrations de framework." />

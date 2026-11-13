@@ -1,0 +1,43 @@
+---
+title: Sources d'événements expliquées
+description: "Pourquoi DeepLinkEvent porte une Source, ce que System et CommandLine signifient réellement par plateforme, et la nuance d'étiquetage sous macOS."
+type: explanation
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+Chaque `DeepLinkEvent` porte un champ `source` avec exactement deux valeurs possibles : `Source::System` et `Source::CommandLine`. La distinction devient utile dès que vous savez ce que chaque valeur signifie *opérationnellement* — et où la nomenclature est approximative.
+
+## Les deux sources
+
+| Source | Poussée par | Signification opérationnelle |
+| --- | --- | --- |
+| `Source::System` | Relais de transfert par le registre Windows, entrée mobile (`push_intent_url`, `push_open_urls`), transfert mono-instance, `push_url` | Une URL qui s'est matérialisée alors que votre processus était déjà le gestionnaire « vivant » — l'OS ou un autre processus vous l'a livrée |
+| `Source::CommandLine` | Relais de démarrage à froid depuis `argv` (Windows, Linux), Apple events `GURL` macOS, `push_launch_url` | Une URL arrivée avec le contexte de lancement de ce processus ou via le chemin d'événement de lancement |
+
+`Source` dérive `Default` avec `System` comme variante par défaut, donc `DeepLinkHub::push_url` (le simple push d'URL) produit `System`, tandis que `push_launch_url` — « cette URL vient d'un lancement » — produit `CommandLine`.
+
+## Démarrage à froid versus exécution à chaud
+
+La raison la plus profonde d'existence du modèle à deux sources est que les liens profonds vous atteignent dans deux situations fondamentalement différentes :
+
+- **Démarrage à froid** — l'OS lance votre processus *pour* une URL. Sous Windows et Linux, l'URL réside dans `argv`, et `register` la relaie via `Config::extract_launch_urls` avec `push_launch_url`, donc le tout premier événement que voit votre consommateur est `Source::CommandLine`.
+- **Exécution à chaud** — votre application tourne déjà quand l'utilisateur clique sur un lien. L'OS doit remettre l'URL au processus vivant : Apple Events sous macOS, relance du protocole registre plus relais sous Windows, `xdg-open` lançant un nouveau processus sous Linux, ou callbacks du framework (`on_open_urls` de GPUI, `Opened` de tao, méthodes déléguées mobiles).
+
+## La nuance macOS
+
+Sous macOS, les URL d'exécution à chaud arrivent sous forme d'Apple events `GURL` — mais le délégué nexum les pousse avec `push_launch_url`, donc les événements résultants portent `Source::CommandLine`, pas `Source::System`. L'étiquette reflète le *mécanisme de livraison* (un Apple event lié au chemin de lancement) plutôt que la scission situationnelle froid/chaud. Conséquences pratiques :
+
+- N'utilisez pas `Source` sous macOS pour distinguer un démarrage à froid d'une activation à chaud.
+- Utilisez-la de façon portable pour distinguer « l'OS m'a remis une URL » (`CommandLine` sous macOS) d'« un processus pair ou de la colle mobile m'a remis une URL » (`System` — y compris les transferts mono-instance, qui sont retransmis en `System`).
+
+<Aside type="danger">
+De futures versions pourraient affiner l'étiquetage macOS. Si vous avez besoin d'une garantie ferme sous macOS aujourd'hui, testez le comportement dans vos tests d'intégration plutôt que de vous fier au nom de la variante.
+</Aside>
+
+## Pourquoi les sources sont des chaînes simples en dessous
+
+Les événements stockent l'URL brute sous forme de `String` et la source sous forme d'énumération à deux variantes — métadonnées délibérément minimales. Tout ce qui est plus riche (analyse en `url::Url`, extraction d'hôte et de chemin) est différé au consommateur via `DeepLinkEvent::parse_url`, afin que les producteurs restent bon marché en allocations et que la file ne bloque jamais sur l'analyse. Voir [principes de conception](/explanation/design-principles/) pour la justification complète.
+
+- <LinkCard title="Référence du cœur" href="/reference/core/" description="Signatures de DeepLinkEvent et Source." />
+- <LinkCard title="Transfert mono-instance" href="/guides/single-instance/" description="Les URL transférées arrivent comme Source::System." />

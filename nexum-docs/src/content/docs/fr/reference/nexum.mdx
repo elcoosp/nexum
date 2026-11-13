@@ -1,0 +1,57 @@
+---
+title: nexum (façade)
+description: "La façade à une seule dépendance — ré-exports des primitives du cœur, du module platform et de l'attribut de bootstrap deep_link."
+type: reference
+---
+
+import { Code, LinkCard } from '@astrojs/starlight/components';
+
+La crate `nexum` est une façade de commodité : elle rassemble les trois briques — primitives du cœur, couche plateforme OS et macro de bootstrap — de sorte qu'une application de bureau n'a besoin que d'une seule dépendance. Tout ce qui figure sur cette page est un ré-export ; le comportement détaillé vit dans les références liées des composants.
+
+## Ré-exports
+
+| Élément | Source | Description |
+| --- | --- | --- |
+| `Config`, `ConfigBuilder`, `AppLink` | `nexum-core` | Configuration déclarative des schémas, app links et icône |
+| `DeepLinkHub` | `nexum-core` | Côté producteur du canal d'événements |
+| `DeepLinkHandle` | `nexum-core` | Côté consommateur (bloquant, asynchrone, sondage, flux) |
+| `DeepLinkEvent`, `Source` | `nexum-core` | La charge utile de l'événement et son origine |
+| `Error`, `Result` | `nexum-core` | Le type d'erreur partagé |
+| `DeepLinkStream` | `nexum-core` *(seulement avec la fonctionnalité `stream`)* | `Stream<Item = String>` sur le handle |
+| `deep_link` | `nexum-macros` | L'attribut de bootstrap `#[deep_link(schemes = ["myapp"])]` |
+| `platform` | `nexum-platform` | Alias du module entier : `init`, `register`, `plist`, `mobile`, … |
+| `hub`, `set_hub`, `push_url`, `push_launch_url`, `register`, `init`, `init_with` | `nexum-platform` | Ré-exports à plat des fonctions racines de la plateforme |
+| `validate_bundle` | `nexum-platform` *(cibles macOS uniquement)* | Validateur de plist pour le bundle d'application en cours |
+
+## Drapeaux de fonctionnalité
+
+| Fonctionnalité | Effet |
+| --- | --- |
+| `stream` | Active `nexum-core/stream` et ré-exporte `DeepLinkStream` |
+| `single-instance` | Active `nexum-platform/single-instance`, exposant `nexum::platform::single_instance` |
+
+## Utilisation
+
+La forme prévue est un attribut sur `main` :
+
+<Code lang="rust" code={`use nexum::deep_link;
+
+#[deep_link(schemes = ["myapp"], icon = "/icons/app.png")]
+fn main() {
+    if let Ok(url) = _nexum_handle.recv_blocking() {
+                    println!("opened {url}");
+    }
+}`} />
+
+Vous préférez un contrôle explicite ? L'attribut est optionnel — `nexum::platform::init(&config)` renvoie le même `DeepLinkHandle` sans aucune macro :
+
+<Code lang="rust" code={`use nexum::{Config, platform};
+
+let config = Config::builder().scheme("myapp").build().expect("valid config");
+let handle = platform::init(&config).expect("registration failed");`} />
+
+## Étapes suivantes
+
+- <LinkCard title="Référence du cœur" href="/reference/core/" description="Signatures de Config, DeepLinkHub, DeepLinkHandle, DeepLinkEvent." />
+- <LinkCard title="Référence de plateforme" href="/reference/platform/" description="API init, register, plist, mobile et single-instance." />
+- <LinkCard title="Référence de la macro" href="/reference/macros/" description="Syntaxe et expansion de l'attribut #[deep_link]." />

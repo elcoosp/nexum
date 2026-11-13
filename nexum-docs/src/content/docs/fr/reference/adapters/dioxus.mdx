@@ -1,0 +1,59 @@
+---
+title: Référence nexum-dioxus
+description: "Adaptateur Dioxus desktop — launch_desktop, le hook use_deep_link et le pont d'événement Opened de tao."
+type: reference
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+`nexum-dioxus` intègre les liens profonds dans les applications Dioxus de bureau. En plus des ré-exports habituels du cœur et de la plateforme, elle ré-exporte `dioxus::LaunchBuilder` et les types de configuration de bureau (`dioxus_desktop::Config` comme `DesktopConfig`, `LogicalSize`, `WindowBuilder`) pour qu'une application de lien profond n'ait besoin d'aucun import supplémentaire pour son lancement.
+
+## API
+
+| Élément | Signature | Description |
+| --- | --- | --- |
+| `setup` | `fn setup(config: &Config) -> Result<()>` | Enregistre et stocke le handle globalement ; `HubAlreadySet` sur double init |
+| `handle` | `fn handle() -> &'static DeepLinkHandle` | Handle stocké ; **panique** avant `setup` |
+| `use_deep_link` | `fn use_deep_link() -> Signal<Option<String>>` | Hook renvoyant un signal mis à jour à chaque URL ; **panique** avant `setup` |
+| `with_deep_link_handler` | `fn with_deep_link_handler(config: DesktopConfig) -> DesktopConfig` | Attache un gestionnaire d'événements personnalisé qui alimente le hub avec les URL de `Event::Opened` de tao |
+| `launch_desktop` | `fn launch_desktop(config: &Config, desktop_config: DesktopConfig, app: fn() -> Element)` | Chemin en un appel : setup + gestionnaire + lancement |
+
+## Le chemin en un appel
+
+<Code lang="rust" code={`let nexum_config = Config::builder().scheme("myapp").build().expect("valid config");
+
+let desktop_config = DesktopConfig::new()
+    .with_window(WindowBuilder::new().with_title("Deep Link Demo"));
+
+launch_desktop(&nexum_config, desktop_config, app);`} />
+
+`launch_desktop` exécute `setup` (**panique** en cas d'échec avec `nexum-dioxus: deep-link setup failed`), enveloppe la configuration de bureau avec `with_deep_link_handler`, et lance via `LaunchBuilder`. Notez que le paramètre `app` est un simple pointeur de fonction `fn() -> Element`.
+
+## Le hook
+
+<Code lang="rust" code={`#[component]
+fn App() -> Element {
+    let deep_link = use_deep_link();
+    rsx! {
+                    p { "Dernier lien profond : {deep_link:?}" }
+    }
+}`} />
+
+Le signal démarre à `None` et est remplacé par chaque URL entrante. Un `use_future` attend en interne `handle.recv()` et écrit dans le signal.
+
+## Câblage des événements et démarrage à froid
+
+`with_deep_link_handler` fait correspondre `Event::Opened` de tao et pousse chaque URL dans le hub avec `nexum_platform::push_url`. Deux comportements découlent de cette conception :
+
+- Les URL arrivant via les événements tao sont livrées comme `Source::System`.
+- Les erreurs de push sont délibérément ignorées (`.ok()`) : après l'arrêt du hub, le flux d'événements cesse de contribuer.
+- Les démarrages à froid sous Windows et Linux arrivent toujours via le relais de ligne de commande dans `setup` — avant le rendu de vos composants — donc le hook peut déjà contenir l'URL de lancement au premier rendu.
+
+<Aside type="danger">
+L'adaptateur épingle `tao 0.34.8` pour correspondre à l'exigence de `dioxus-desktop` ; les deux crates doivent voir l'énumération d'événements identique. Cargo résout cela automatiquement quand les versions s'alignent — ne surchargez pas tao dans votre propre manifest.
+</Aside>
+
+## Étapes suivantes
+
+- <LinkCard title="Choisir un adaptateur" href="/guides/choosing-an-adapter/" description="Où Dioxus se situe parmi les cinq intégrations." />
+- <LinkCard title="Référence de plateforme" href="/reference/platform/" description="Les fonctions du hub global que le gestionnaire d'événements appelle." />

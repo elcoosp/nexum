@@ -1,0 +1,69 @@
+---
+title: Nexum
+description: "Liaison profonde agnostique vis-à-vis du framework pour Rust — enregistrez des schémas d'URL personnalisés et recevez les événements de lien profond avec une API unifiée."
+type: overview
+template: splash
+hero:
+        title: Nexum
+        tagline: Liaison profonde agnostique vis-à-vis du framework pour Rust. Enregistrez des schémas d'URL personnalisés et recevez les événements de lien profond avec une API unifiée sous Windows, macOS et Linux — plus un support déclaratif pour Android et iOS.
+        image:
+                file: ../../../assets/logo.png
+                alt: Logo Nexum
+        actions:
+                - text: Construisez votre premier lien profond
+                  link: /tutorials/getting-started/
+                  icon: right-arrow
+                - text: Référence de l'API
+                  link: /reference/nexum/
+                  variant: minimal
+---
+
+import { Card, CardGrid, LinkButton } from '@astrojs/starlight/components';
+import { Image } from 'astro:assets';
+import heroLogo from '../../../assets/hero-logo.png';
+
+`nexum` donne aux applications Rust une façon unique et cohérente de gérer les schémas d'URL personnalisés. Vous déclarez les schémas que votre application possède, nexum les enregistre auprès du système d'exploitation, et votre code reçoit chaque événement de lien profond — que l'URL vienne d'un navigateur, d'un second processus ou de la ligne de commande — via un seul canal producteur-consommateur.
+
+L'espace de travail est organisé pour que vous ne dépendiez que de ce dont vous avez besoin : [`nexum-core`](/reference/core/) contient les primitives indépendantes du framework, [`nexum-platform`](/reference/platform/) effectue l'enregistrement au niveau OS, et de minces crates d'adaptateur exposent le tout à travers les idiomes de cinq frameworks UI.
+
+## Choisissez votre chemin
+
+<CardGrid stagger>
+        <Card title="Construisez votre premier lien profond">
+                Un tutoriel pratique qui vous emmène d'un projet Cargo vide à une application en cours d'exécution qui reçoit des liens profonds sur votre plateforme.
+        </Card>
+        <Card title="Accomplir une tâche">
+                Guides pratiques pour l'installation, la configuration par plateforme, le transfert mono-instance, les files bornées, la consommation asynchrone et l'entrée mobile.
+        </Card>
+        <Card title="Consulter l'API">
+                Pages de référence pour chaque crate publique, avec signatures exactes, drapeaux de fonctionnalité, valeurs par défaut et tableaux de comportement par plateforme.
+        </Card>
+        <Card title="Comprendre la conception">
+                Explications de l'architecture producteur-consommateur, des sources d'événements et des principes d'ingénierie derrière les crates.
+        </Card>
+</CardGrid>
+
+<LinkButton href="/tutorials/getting-started/" icon="right-arrow">Commencer le tutoriel</LinkButton>
+
+## L'écosystème en un coup d'œil
+
+| Crate                                         | Objet                                                                                   |
+| --------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [`nexum`](/reference/nexum/)                  | Façade : cœur + plateforme + l'attribut de bootstrap `#[deep_link]` en une seule dépendance |
+| [`nexum-core`](/reference/core/)              | Producteur `DeepLinkHub` et consommateur `DeepLinkHandle` — bloquant, asynchrone, flux, borné |
+| [`nexum-platform`](/reference/platform/)      | Enregistrement OS, transfert mono-instance, validation plist, entrée mobile             |
+| [`nexum-macros`](/reference/macros/)          | L'attribut `#[deep_link(schemes = ["myapp"])]`                                          |
+| [`nexum-floem`](/reference/adapters/floem/)   | Adaptateur Floem renvoyant un `ReadSignal<Option<String>>` réactif                      |
+| [`nexum-xilem`](/reference/adapters/xilem/)   | Adaptateur Xilem avec le wrapper de vue `with_deep_links`                               |
+| [`nexum-dioxus`](/reference/adapters/dioxus/) | Adaptateur Dioxus avec un chemin de lancement en un appel `launch_desktop`              |
+| [`nexum-leptos`](/reference/adapters/leptos/) | Adaptateur Leptos renvoyant `RwSignal<Option<String>>`, prêt pour wasm                  |
+| [`nexum-gpui`](/reference/adapters/gpui/)     | Adaptateur GPUI pour les applications style Zed                                         |
+
+## Support des plateformes
+
+| Plateforme        | Méthode d'enregistrement                  | Détection à l'exécution           |
+| ----------------- | ----------------------------------------- | --------------------------------- |
+| **Windows**       | Registre (par utilisateur)                | Arguments CLI                     |
+| **macOS**         | `Info.plist` (validateur inclus)          | Apple Events (`GURL` via `objc2`) |
+| **Linux**         | Fichier `.desktop` + `xdg-mime`           | Arguments CLI                     |
+| **Android / iOS** | Déclaratif (générateurs manifest / plist) | Colle de framework → `mobile::push_*` |

@@ -1,0 +1,57 @@
+---
+title: Architecture expliquée
+description: "Comment l'espace de travail nexum est organisé en couches, comment les événements circulent du système d'exploitation vers votre code, et où chaque crate se situe."
+type: explanation
+---
+
+import { Aside, Code, FileTree, LinkCard } from '@astrojs/starlight/components';
+
+Nexum résout un seul problème — faire entrer une URL depuis le système d'exploitation jusqu'à votre processus Rust — et le résout en découpant le problème en couches avec un minimum de dépendances entre elles. Comprendre cette stratification explique presque toutes les décisions d'API rencontrées dans les pages de référence.
+
+## La disposition de l'espace de travail
+
+<Code lang="jsx" code={`<FileTree>
+- nexum/            (façade : ré-exports + l'attribut deep_link)
+- nexum-macros/     (proc-macro : bootstrap #[deep_link])
+- nexum-core/       (Config, DeepLinkHub, DeepLinkHandle, DeepLinkEvent)
+- nexum-platform/   (enregistrement OS, hub global, plist, mobile, mono-instance)
+- nexum-floem/      (adaptateur : Floem)
+- nexum-xilem/      (adaptateur : Xilem)
+- nexum-dioxus/     (adaptateur : Dioxus desktop)
+- nexum-leptos/     (adaptateur : Leptos, compatible wasm)
+- nexum-gpui/       (adaptateur : GPUI — hors de l'espace de travail, suit Zed)
+- examples/         (une application exécutable par framework)
+</FileTree>`} />
+
+Seul le bas de la pile connaît le système d'exploitation. `nexum-core` compile avec `#![forbid(unsafe_code)]` et aucun code dépendant de la plateforme ; `nexum-platform` contient les trois backends de bureau conditionnés par `cfg` plus les générateurs portables ; les adaptateurs ne contiennent que la logique de pont vers le modèle d'événements de leur framework.
+
+## Le pipeline d'événements
+
+Chaque lien profond suit les trois mêmes étapes :
+
+1. **Producteur** — quelque chose pousse une URL dans un `DeepLinkHub` sous forme de `String`. Le producteur peut être un relais de plateforme (arguments de ligne de commande sous Windows et Linux, le délégué d'Apple event `GURL` sous macOS), les fonctions d'entrée mobile, une seconde instance qui transfère via un socket, ou votre propre code de test.
+2. **File** — le hub est une file MPSC `async-channel`, non bornée par défaut et bornable à la demande. Les producteurs n'ont jamais besoin d'un exécuteur ; la file est tout aussi à l'aise sur un pool de threads natif, un runtime asynchrone, ou wasm.
+3. **Consommateur** — un ou plusieurs `DeepLinkHandle` reçoivent des `DeepLinkEvent`. La distribution est *round-robin par événement* : chaque URL va à exactement un consommateur actif. Cloner un handle ajoute un consommateur pour le partage de charge, pas pour la diffusion.
+
+La couche plateforme rend cela concret : `init` (ou `init_with`) installe un hub comme hub **global au processus**, exécute `register`, et vous remet un handle. À partir de là, `push_url` et `push_launch_url` — les fonctions qu'appelle le code de pont vers l'OS — alimentent ce hub global. Votre code applicatif ne parle jamais directement à l'OS ; il ne touche que le handle.
+
+## Où se situent les adaptateurs
+
+Un adaptateur est délibérément mince. Chacun :
+
+- appelle `nexum_platform::init` pour vous (exactement une fois — un second appel échoue avec `HubAlreadySet`),
+- stocke ou enveloppe le `DeepLinkHandle` retourné,
+- relaie les événements dans la réactivité propre au framework : un `ReadSignal` Floem, une tâche Xilem, un `Signal` Dioxus alimenté par `use_future`, un `RwSignal` Leptos piloté par `spawn_local`, ou une mise à jour d'entité GPUI.
+
+Parce que le côté adaptateur du contrat se réduit à « sonder un handle et transmettre des chaînes », les mêmes garanties tiennent partout : les URL arrivent sous forme de `String`, les sources sont classées par `Source`, et les fonctionnalités de contre-pression ou de transfert s'insèrent sous n'importe quel adaptateur.
+
+## Les couches optionnelles
+
+Deux fonctionnalités étendent le pipeline sans le modifier. Le **mode borné** (`DeepLinkHub::bounded(n)` installé via `init_with`) transforme la file en point de contre-pression : les producteurs bloquent (natif) ou abandonnent (wasm) lorsque le consommateur prend du retard. Le **transfert mono-instance** (fonctionnalité `single-instance`) ajoute un socket local pour qu'un second lancement transmette ses URL de ligne de commande dans le hub du processus primaire — le second processus voit `HandedOff` et se termine. Aucune des deux fonctionnalités ne nécessite de toucher votre code de consommation ; toutes deux opèrent entièrement du côté producteur du pipeline.
+
+<Aside type="tip">
+Les applications d'exemple du dépôt sont la version exécutable de cette page : chaque crate `examples/*-basic` câble un adaptateur de bout en bout, et l'exemple leptos démontre la variante navigateur à hub possédé.
+</Aside>
+
+- <LinkCard title="Référence du cœur" href="/reference/core/" description="Les types hub, handle et événement en détail." />
+- <LinkCard title="Sources d'événements expliquées" href="/explanation/event-sources/" description="Comment les producteurs étiquettent les URL qu'ils poussent." />

@@ -1,0 +1,58 @@
+---
+title: L'attribut deep_link
+description: "Syntaxe, clés acceptées, code généré et contraintes de l'attribut de bootstrap nexum-macros."
+type: reference
+---
+
+import { Aside, Badge, Code, LinkCard } from '@astrojs/starlight/components';
+
+`#[deep_link]` est la macro d'attribut exportée par `nexum-macros` (et ré-exportée par la façade `nexum`). Elle réécrit un `fn main` pour que l'enregistrement du lien profond ait lieu **avant** la première instruction du corps, en liant le handle consommateur à une liaison générée `_nexum_handle`.
+
+## Syntaxe
+
+| Clé | Type | Requis | Effet |
+| --- | --- | --- | --- |
+| `schemes` | tableau de littéraux de chaîne, ou un seul littéral de chaîne | <Badge text="Requis" variant="danger" /> | Un appel `Config::builder().scheme(...)` par entrée |
+| `app_links` | tableau de littéraux de chaîne, ou un seul littéral de chaîne | <Badge text="Optionnel" variant="note" /> | Un `AppLink::new(host, [])` par entrée (sans préfixes de chemin) |
+| `icon` | littéral de chaîne unique | <Badge text="Optionnel" variant="note" /> | Passé à `.icon_path(...)` |
+
+Les clés inconnues, les valeurs nues ou les valeurs non-chaîne échouent à la compilation avec un message ciblé — par exemple ``unknown key `foo`; expected `schemes`, `app_links` or `icon` ``.
+
+<Code lang="rust" code={`use nexum::deep_link;
+
+#[deep_link(schemes = ["myapp", "myapp-alt"], icon = "/icons/app.png")]
+fn main() {
+    if let Ok(url) = _nexum_handle.recv_blocking() {
+                    println!("opened {url}");
+    }
+}`} />
+
+## Code généré
+
+La macro laisse vos attributs, votre visibilité et votre signature intacts et préfixe le corps par une liaison :
+
+<Code lang="rust" code={`let _nexum_handle = {
+    let __nexum_config = ::nexum::Config::builder()
+                    .scheme("myapp")
+                    .build()
+                    .expect("nexum: invalid deep-link configuration");
+    ::nexum::platform::init(&__nexum_config)
+                    .expect("nexum: deep-link initialization failed")
+};
+// ...vos instructions originales...`} />
+
+## Contraintes
+
+- **`fn main` uniquement.** Appliquer l'attribut à toute autre fonction est une erreur de compilation : `` `#[deep_link]` can only be applied to `fn main` ``.
+- **Nécessite la façade.** L'expansion référence des chemins absolus `::nexum::`, donc la macro ne fonctionne que lorsque la crate façade `nexum` est une dépendance — pas avec `nexum-macros` seule.
+- **Panique en cas d'échec par conception.** Une configuration invalide et un enregistrement échoué paniquent tous deux avec des messages descriptifs. Si votre application doit se rétablir — par exemple pour afficher une boîte de dialogue — appelez `nexum::platform::init` directement et gérez le `Result` au lieu d'utiliser l'attribut.
+- **Moment de l'enregistrement.** Tout ce qui se trouve dans le bloc généré s'exécute avant votre première instruction, ce qui satisfait aussi l'exigence de thread principal de macOS pour l'enregistrement.
+
+<Aside type="tip">
+Le `_nexum_handle` généré est un `DeepLinkHandle` ordinaire : chaque motif de consommation de la [référence du cœur](/reference/core/) — bloquant, asynchrone, flux, borné — s'applique tel quel.
+</Aside>
+
+## Étapes suivantes
+
+- <LinkCard title="Référence de la façade" href="/reference/nexum/" description="Ce que la crate nexum ré-exporte à côté de la macro." />
+- <LinkCard title="Construire votre premier lien profond" href="/tutorials/getting-started/" description="L'attribut dans un parcours complet et exécutable." />
