@@ -33,13 +33,13 @@ export default await defineDocsConfig({
                         },
 
                         sidebar: [
-                                { label: 'Overview', translations: { fr: 'Aperçu' }, link: '/' },
+                                { label: 'Overview', link: '/' },
                                 {
-                                        label: 'Tutorials', translations: { fr: 'Tutoriels' },
+                                        label: 'Tutorials',
                                         items: [{ slug: 'tutorials/getting-started' }]
                                 },
                                 {
-                                        label: 'How-to Guides', translations: { fr: 'Guides pratiques' },
+                                        label: 'How-to Guides',
                                         items: [
                                                 { slug: 'guides/installation' },
                                                 { slug: 'guides/choosing-an-adapter' },
@@ -53,7 +53,7 @@ export default await defineDocsConfig({
                                         ]
                                 },
                                 {
-                                        label: 'Reference', translations: { fr: 'Référence' },
+                                        label: 'Reference',
                                         items: [
                                                 { slug: 'reference/nexum' },
                                                 { slug: 'reference/core' },
@@ -68,7 +68,7 @@ export default await defineDocsConfig({
                                         ]
                                 },
                                 {
-                                        label: 'Explanation', translations: { fr: 'Explication' },
+                                        label: 'Explanation',
                                         items: [
                                                 { slug: 'explanation/architecture' },
                                                 { slug: 'explanation/event-sources' },
