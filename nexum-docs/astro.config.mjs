@@ -60,11 +60,11 @@ export default await defineDocsConfig({
                                                 { slug: 'reference/errors' },
                                                 { slug: 'reference/platform' },
                                                 { slug: 'reference/macros' },
-                                                { slug: 'reference/adapters/floem' },
-                                                { slug: 'reference/adapters/xilem' },
-                                                { slug: 'reference/adapters/dioxus' },
-                                                { slug: 'reference/adapters/leptos' },
-                                                { slug: 'reference/adapters/gpui' },
+                                                { slug: 'reference/nexum-floem' },
+                                                { slug: 'reference/nexum-xilem' },
+                                                { slug: 'reference/nexum-dioxus' },
+                                                { slug: 'reference/nexum-leptos' },
+                                                { slug: 'reference/nexum-gpui' },
                                         ]
                                 },
                                 {
