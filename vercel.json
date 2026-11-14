@@ -1,3 +1,10 @@
 {
-  "installCommand": "npm i -g pnpm@11.24.0 && pnpm install"
+  "installCommand": "npm i -g pnpm@11.24.0 && pnpm install",
+  "redirects": [
+    {
+      "source": "/reference/adapters/:adapter",
+      "destination": "/reference/nexum-:adapter",
+      "permanent": true
+    }
+  ]
 }
