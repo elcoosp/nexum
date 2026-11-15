@@ -1,0 +1,46 @@
+---
+title: Unifying custom URL schemes across five operating systems in Rust
+date: 2026-11-15
+cover:
+  alt: Nexum Architecture
+  image: ./welcome-cover.jpg
+image: ./welcome-cover.jpg
+---
+
+import { Card, CardGrid, Aside } from '@astrojs/starlight/components';
+
+Handling a custom URL scheme like `myapp://oauth/callback` in a cross-platform Rust app means dealing with five different OS mechanisms. Linux expects `.desktop` files and D-Bus forwarding, macOS delivers Apple Events, Windows reads registry keys and forwards CLI arguments from second instances, and mobile targets require manifest declarations.
+
+Nexum puts OS registration and incoming deep-link delivery behind one channel.
+
+## The Goal
+
+We needed a crate where an application declares its URL schemes once, registers them with the host OS, and receives parsed deep-link events through a single producer-consumer stream, whether the link cold-starts the binary or arrives while a window is already running.
+
+## The Architecture
+
+The workspace splits pure protocol types from platform-specific OS hooks and UI framework adapters.
+
+<CardGrid stagger>
+  <Card title="nexum-core" icon="puzzle">
+    Framework-independent scheme definitions, parsed URL event types, and channel primitives.
+  </Card>
+  <Card title="nexum-platform" icon="setting">
+    Implements desktop OS registration and single-instance forwarding on Windows, macOS, and Linux, plus declarative support for Android and iOS.
+  </Card>
+  <Card title="Five UI Adapters" icon="rocket">
+    Thin adapter crates integrate the deep-link event stream into GPUI, Dioxus, Leptos, Xilem, and Floem event loops.
+  </Card>
+</CardGrid>
+
+## What it cost
+
+The trickiest bugs in deep linking are process-lifecycle races rather than URL parsing. On Windows and Linux, clicking a link in a browser launches a second process that must forward its URL payload to the primary instance and exit cleanly before opening a duplicate window.
+
+<Aside type="caution" title="Limitations">
+Desktop registration writes to user-level OS configuration (the Windows registry or `~/.local/share/applications` on Linux). During local development, running two different debug builds that claim the same scheme name will overwrite each other's OS handler until re-registered.
+</Aside>
+
+## Getting started
+
+Follow the [getting started tutorial](/tutorials/getting-started/) to register a custom URL scheme and wire the receiver into your application loop.
