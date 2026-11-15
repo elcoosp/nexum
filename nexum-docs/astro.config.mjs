@@ -4,7 +4,7 @@ import starlightHeadingBadges from 'starlight-heading-badges';
 
 export default await defineDocsConfig({
   llmsTxt: {},
-  site: 'https://nexum.vercel.app',
+  site: 'nexum-rs.vercel.app',
   domain: 'nexum.vercel.app',
   title: "Nexum",
   description: "Framework-agnostic deep linking for Rust — one unified API for custom URL schemes and deep-link events across Windows, macOS, Linux, Android and iOS.",
