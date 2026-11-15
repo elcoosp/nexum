@@ -1,0 +1,46 @@
+---
+title: Unifier les schémas d'URL personnalisés sur cinq systèmes d'exploitation en Rust
+date: 2026-11-15
+cover:
+  alt: Architecture de Nexum
+  image: ../../blog/welcome-cover.jpg
+image: ../../blog/welcome-cover.jpg
+---
+
+import { Card, CardGrid, Aside } from '@astrojs/starlight/components';
+
+Gérer un schéma d'URL personnalisé comme `myapp://oauth/callback` dans une application Rust multiplateforme implique de composer avec cinq mécanismes système différents. Linux attend des fichiers `.desktop` et un relais D-Bus, macOS délivre des Apple Events, Windows lit des clés de registre et transmet les arguments CLI depuis une seconde instance, et les cibles mobiles exigent des déclarations dans leurs manifestes.
+
+Nexum réunit l'enregistrement auprès du système et la réception des liens profonds entrants derrière un canal unique.
+
+## L'objectif
+
+Il nous fallait une crate permettant à une application de déclarer ses schémas d'URL une seule fois, de les enregistrer auprès du système hôte et de recevoir les événements de liens profonds analysés via un flux producteur-consommateur unique, que le lien démarre le binaire à froid ou arrive alors qu'une fenêtre est déjà ouverte.
+
+## L'architecture
+
+Le workspace sépare les types purs du protocole des hooks système propres à chaque plateforme et des adaptateurs de frameworks UI.
+
+<CardGrid stagger>
+  <Card title="nexum-core" icon="puzzle">
+    Définitions de schémas indépendantes du framework, types d'événements d'URL analysés et primitives de canaux.
+  </Card>
+  <Card title="nexum-platform" icon="setting">
+    Implémente l'enregistrement système desktop et le transfert d'instance unique sur Windows, macOS et Linux, ainsi que la prise en charge déclarative pour Android et iOS.
+  </Card>
+  <Card title="Cinq adaptateurs UI" icon="rocket">
+    Des crates d'adaptation légères intègrent le flux d'événements de liens profonds dans les boucles d'événements de GPUI, Dioxus, Leptos, Xilem et Floem.
+  </Card>
+</CardGrid>
+
+## Ce que cela a coûté
+
+Les bogues les plus délicats dans la gestion des liens profonds proviennent des courses critiques liées au cycle de vie des processus plutôt que de l'analyse des URL. Sur Windows et Linux, un clic sur un lien dans un navigateur lance un second processus qui doit transmettre sa charge utile d'URL à l'instance principale et se terminer proprement avant d'ouvrir une fenêtre en double.
+
+<Aside type="caution" title="Limites">
+L'enregistrement desktop écrit dans la configuration utilisateur du système d'exploitation (le registre Windows ou `~/.local/share/applications` sous Linux). En développement local, exécuter deux builds de débogage différents qui revendiquent le même nom de schéma écrasera le gestionnaire système de l'autre jusqu'au prochain enregistrement.
+</Aside>
+
+## Démarrer
+
+Suivez le [tutoriel de démarrage](/fr/tutorials/getting-started/) pour enregistrer un schéma d'URL personnalisé et raccorder le récepteur à la boucle de votre application.
