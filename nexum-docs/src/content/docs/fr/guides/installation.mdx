@@ -10,20 +10,20 @@ Chaque crate nexum est publiée depuis le même espace de travail à la même ve
 
 <Tabs>
     <TabItem label="Façade (recommandé)">
-<Code lang="toml" code={`[dependencies]
+<Code lang="toml" title="Cargo.toml" code={`[dependencies]
 nexum = "0.3"`} />
 
         La façade ré-exporte `Config`, `DeepLinkHub`, `DeepLinkHandle`, l'attribut `#[deep_link]` et tout le module `platform`. Utilisez-la pour les applications de bureau qui veulent le chemin le plus court de la dépendance au lien profond fonctionnel.
     </TabItem>
     <TabItem label="Cœur + plateforme">
-<Code lang="toml" code={`[dependencies]
+<Code lang="toml" title="Cargo.toml" code={`[dependencies]
 nexum-core = "0.3"
 nexum-platform = "0.3"`} />
 
         Utilisez cette forme lorsque vous ne voulez pas de macro d'attribut dans votre build, ou lorsque vous câblez l'enregistrement vous-même — par exemple dans une fonction d'amorçage existante avec une gestion d'erreur personnalisée autour de `nexum_platform::init`.
     </TabItem>
     <TabItem label="Adaptateur de framework">
-<Code lang="toml" code={`[dependencies]
+<Code lang="toml" title="Cargo.toml" code={`[dependencies]
 # Floem — la fonctionnalité \`signal\` tire floem lui-même
 nexum-floem = { version = "0.3", features = ["signal"] }
 
@@ -38,7 +38,7 @@ nexum-leptos = { version = "0.3", features = ["signal"] }`} />
 
         `nexum-gpui` n'est pas publiée sur crates.io parce qu'elle suit la branche `main` de Zed via une dépendance git. Dépendez-en directement depuis le dépôt :
 
-<Code lang="toml" code={`[dependencies]
+<Code lang="toml" title="Cargo.toml" code={`[dependencies]
 nexum-gpui = { git = "https://github.com/elcoosp/nexum" }`} />
     </TabItem>
 </Tabs>

@@ -10,7 +10,7 @@ On Windows and Linux a deep link usually launches a **second** instance of your 
 
 ## Enable the feature
 
-<Code lang="toml" code={`[dependencies]
+<Code lang="toml" title="Cargo.toml" code={`[dependencies]
 nexum = { version = "0.3", features = ["single-instance"] }`} />
 
 The module lives in the platform layer, so `nexum::platform::single_instance` is the entry point (or `nexum_platform::single_instance` if you depend on the platform crate directly).

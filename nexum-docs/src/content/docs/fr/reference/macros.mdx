@@ -18,7 +18,7 @@ import { Aside, Badge, Code, LinkCard } from '@astrojs/starlight/components';
 
 Les clés inconnues, les valeurs nues ou les valeurs non-chaîne échouent à la compilation avec un message ciblé — par exemple ``unknown key `foo`; expected `schemes`, `app_links` or `icon` ``.
 
-<Code lang="rust" code={`use nexum::deep_link;
+<Code lang="rust" title="src/main.rs" code={`use nexum::deep_link;
 
 #[deep_link(schemes = ["myapp", "myapp-alt"], icon = "/icons/app.png")]
 fn main() {

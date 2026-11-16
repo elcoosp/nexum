@@ -10,7 +10,7 @@ Sous Windows et Linux, un lien profond lance généralement une **seconde** inst
 
 ## Activer la fonctionnalité
 
-<Code lang="toml" code={`[dependencies]
+<Code lang="toml" title="Cargo.toml" code={`[dependencies]
 nexum = { version = "0.3", features = ["single-instance"] }`} />
 
 Le module vit dans la couche plateforme, donc `nexum::platform::single_instance` est le point d'entrée (ou `nexum_platform::single_instance` si vous dépendez directement de la crate de plateforme).

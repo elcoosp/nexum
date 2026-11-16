@@ -10,20 +10,20 @@ Every nexum crate publishes from the same workspace at the same version, so you 
 
 <Tabs>
     <TabItem label="Facade (recommended)">
-<Code lang="toml" code={`[dependencies]
+<Code lang="toml" title="Cargo.toml" code={`[dependencies]
 nexum = "0.3"`} />
 
         The facade re-exports `Config`, `DeepLinkHub`, `DeepLinkHandle`, the `#[deep_link]` attribute and the whole `platform` module. Use it for desktop apps that want the shortest path from dependency to working deep links.
     </TabItem>
     <TabItem label="Core + platform">
-<Code lang="toml" code={`[dependencies]
+<Code lang="toml" title="Cargo.toml" code={`[dependencies]
 nexum-core = "0.3"
 nexum-platform = "0.3"`} />
 
         Use this shape when you do not want an attribute macro in your build, or when you wire registration yourself — for example inside an existing bootstrap function with custom error handling around `nexum_platform::init`.
     </TabItem>
     <TabItem label="Framework adapter">
-<Code lang="toml" code={`[dependencies]
+<Code lang="toml" title="Cargo.toml" code={`[dependencies]
 # Floem — the \`signal\` feature pulls in floem itself
 nexum-floem = { version = "0.3", features = ["signal"] }
 
@@ -38,7 +38,7 @@ nexum-leptos = { version = "0.3", features = ["signal"] }`} />
 
         `nexum-gpui` is not published to crates.io because it tracks Zed's `main` branch through a git dependency. Depend on it directly from the repository:
 
-<Code lang="toml" code={`[dependencies]
+<Code lang="toml" title="Cargo.toml" code={`[dependencies]
 nexum-gpui = { git = "https://github.com/elcoosp/nexum" }`} />
     </TabItem>
 </Tabs>

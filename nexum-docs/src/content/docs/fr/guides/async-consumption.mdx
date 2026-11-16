@@ -27,7 +27,7 @@ while let Some(url) = handle.recv().await {
 
 Activez la fonctionnalité et convertissez le handle :
 
-<Code lang="toml" code={`[dependencies]
+<Code lang="toml" title="Cargo.toml" code={`[dependencies]
 nexum = { version = "0.3", features = ["stream"] }`} />
 
 <Code lang="rust" code={`use futures::StreamExt;

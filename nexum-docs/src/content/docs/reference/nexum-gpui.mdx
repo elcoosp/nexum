@@ -8,7 +8,7 @@ import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 `nexum-gpui` integrates deep links into GPUI applications (Zed-style UIs). The crate is **not a workspace member** and is not published to crates.io: GPUI itself moves with Zed's `main` branch, so `nexum-gpui` tracks it through a git dependency and is verified separately. Depend on it directly from the repository:
 
-<Code lang="toml" code={`[dependencies]
+<Code lang="toml" title="Cargo.toml" code={`[dependencies]
 nexum-gpui = { git = "https://github.com/elcoosp/nexum" }`} />
 
 ## API
