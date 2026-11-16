@@ -10,18 +10,7 @@ Nexum résout un seul problème — faire entrer une URL depuis le système d'ex
 
 ## La disposition de l'espace de travail
 
-<Code lang="jsx" code={`<FileTree>
-- nexum/            (façade : ré-exports + l'attribut deep_link)
-- nexum-macros/     (proc-macro : bootstrap #[deep_link])
-- nexum-core/       (Config, DeepLinkHub, DeepLinkHandle, DeepLinkEvent)
-- nexum-platform/   (enregistrement OS, hub global, plist, mobile, mono-instance)
-- nexum-floem/      (adaptateur : Floem)
-- nexum-xilem/      (adaptateur : Xilem)
-- nexum-dioxus/     (adaptateur : Dioxus desktop)
-- nexum-leptos/     (adaptateur : Leptos, compatible wasm)
-- nexum-gpui/       (adaptateur : GPUI — hors de l'espace de travail, suit Zed)
-- examples/         (une application exécutable par framework)
-</FileTree>`} />
+<Code lang="jsx" code={"<FileTree>\n- nexum/            (fa\u00e7ade : r\u00e9-exports + l'attribut deep_link)\n- nexum-macros/     (proc-macro : bootstrap #[deep_link])\n- nexum-core/       (Config, DeepLinkHub, DeepLinkHandle, DeepLinkEvent)\n- nexum-platform/   (enregistrement OS, hub global, plist, mobile, mono-instance)\n- nexum-floem/      (adaptateur : Floem)\n- nexum-xilem/      (adaptateur : Xilem)\n- nexum-dioxus/     (adaptateur : Dioxus desktop)\n- nexum-leptos/     (adaptateur : Leptos, compatible wasm)\n- nexum-gpui/       (adaptateur : GPUI \u2014 hors de l'espace de travail, suit Zed)\n- examples/         (une application ex\u00e9cutable par framework)\n</FileTree>"} />
 
 Seul le bas de la pile connaît le système d'exploitation. `nexum-core` compile avec `#![forbid(unsafe_code)]` et aucun code dépendant de la plateforme ; `nexum-platform` contient les trois backends de bureau conditionnés par `cfg` plus les générateurs portables ; les adaptateurs ne contiennent que la logique de pont vers le modèle d'événements de leur framework.
 

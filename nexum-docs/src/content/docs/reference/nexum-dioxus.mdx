@@ -20,24 +20,13 @@ import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 ## The one-call path
 
-<Code lang="rust" code={`let nexum_config = Config::builder().scheme("myapp").build().expect("valid config");
-
-let desktop_config = DesktopConfig::new()
-    .with_window(WindowBuilder::new().with_title("Deep Link Demo"));
-
-launch_desktop(&nexum_config, desktop_config, app);`} />
+<Code lang="rust" code={"let nexum_config = Config::builder().scheme(\"myapp\").build().expect(\"valid config\");\n\nlet desktop_config = DesktopConfig::new()\n    .with_window(WindowBuilder::new().with_title(\"Deep Link Demo\"));\n\nlaunch_desktop(&nexum_config, desktop_config, app);"} />
 
 `launch_desktop` runs `setup` (**panicking** on failure with `nexum-dioxus: deep-link setup failed`), wraps the desktop config with `with_deep_link_handler`, and launches through `LaunchBuilder`. Note the `app` parameter is a plain function pointer `fn() -> Element`.
 
 ## The hook
 
-<Code lang="rust" code={`#[component]
-fn App() -> Element {
-    let deep_link = use_deep_link();
-    rsx! {
-                    p { "Last deep link: {deep_link:?}" }
-    }
-}`} />
+<Code lang="rust" code={"#[component]\nfn App() -> Element {\n    let deep_link = use_deep_link();\n    rsx! {\n                    p { \"Last deep link: {deep_link:?}\" }\n    }\n}"} />
 
 The signal starts as `None` and is replaced by each arriving URL. A `use_future` internally awaits `handle.recv()` and writes into the signal.
 

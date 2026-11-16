@@ -18,34 +18,23 @@ In this tutorial you build a complete Rust program that owns the `myapp://` URL 
 
 Create a new binary crate and change into it:
 
-<Code lang="bash" title="Terminal" code={`cargo new nexum-demo
-cd nexum-demo`} />
+<Code lang="bash" title="Terminal" code={"cargo new nexum-demo\ncd nexum-demo"} />
 
 ## Step 2 — Add the nexum facade
 
 The `nexum` facade is the one-dependency path: it re-exports `Config`, the platform layer, and the `#[deep_link]` attribute.
 
-<Code lang="bash" title="Terminal" code={`cargo add nexum`} />
+<Code lang="bash" title="Terminal" code={"cargo add nexum"} />
 
 Your `Cargo.toml` gains:
 
-<Code lang="toml" title="Cargo.toml" code={`[dependencies]
-nexum = "0.3"`} />
+<Code lang="toml" title="Cargo.toml" code={"[dependencies]\nnexum = \"0.3\""} />
 
 ## Step 3 — Write the bootstrap
 
 Replace the contents of `src/main.rs` with:
 
-<Code lang="rust" title="src/main.rs" code={`use nexum::deep_link;
-
-#[deep_link(schemes = ["myapp"])]
-fn main() {
-    // Registration happens before this body runs; the consumer
-    // handle is bound to \`_nexum_handle\`.
-    if let Ok(url) = _nexum_handle.recv_blocking() {
-                    println!("opened {url}");
-    }
-}`} />
+<Code lang="rust" title="src/main.rs" code={"use nexum::deep_link;\n\n#[deep_link(schemes = [\"myapp\"])]\nfn main() {\n    // Registration happens before this body runs; the consumer\n    // handle is bound to `_nexum_handle`.\n    if let Ok(url) = _nexum_handle.recv_blocking() {\n                    println!(\"opened {url}\");\n    }\n}"} />
 
 The `#[deep_link]` attribute rewrites your `main` so that nexum builds a validated `Config` and calls `nexum::platform::init` *before* your first statement executes. The returned `DeepLinkHandle` is bound to the generated `_nexum_handle` binding, which you then use to receive URLs.
 
@@ -57,7 +46,7 @@ The generated code panics if the configuration is invalid or the OS registration
 
 Start the program and leave it running:
 
-<Code lang="bash" title="Terminal" code={`cargo run`} />
+<Code lang="bash" title="Terminal" code={"cargo run"} />
 
 On first run, nexum registers `myapp://` for your user:
 
@@ -69,14 +58,7 @@ On first run, nexum registers `myapp://` for your user:
 
 With the app still running, open a `myapp://` URL from another terminal:
 
-<Code lang="bash" title="Terminal" code={`# macOS
-open "myapp://open/settings"
-
-# Linux
-xdg-open "myapp://open/settings"
-
-# Windows (PowerShell)
-Start-Process "myapp://open/settings"`} />
+<Code lang="bash" title="Terminal" code={"# macOS\nopen \"myapp://open/settings\"\n\n# Linux\nxdg-open \"myapp://open/settings\"\n\n# Windows (PowerShell)\nStart-Process \"myapp://open/settings\""} />
 
 The operating system looks up the handler and launches — or, on Windows and Linux, re-launches — the registered executable with the URL. Nexum detects the URL among the process arguments and relays it into your app.
 

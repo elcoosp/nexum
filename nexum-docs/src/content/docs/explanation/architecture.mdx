@@ -10,18 +10,7 @@ Nexum solves one problem — getting a URL from the operating system into your R
 
 ## The workspace layout
 
-<Code lang="jsx" code={`<FileTree>
-- nexum/            (facade: re-exports + the deep_link attribute)
-- nexum-macros/     (proc-macro: #[deep_link] bootstrap)
-- nexum-core/       (Config, DeepLinkHub, DeepLinkHandle, DeepLinkEvent)
-- nexum-platform/   (OS registration, global hub, plist, mobile, single-instance)
-- nexum-floem/      (adapter: Floem)
-- nexum-xilem/      (adapter: Xilem)
-- nexum-dioxus/     (adapter: Dioxus desktop)
-- nexum-leptos/     (adapter: Leptos, wasm-capable)
-- nexum-gpui/       (adapter: GPUI — outside the workspace, tracks Zed)
-- examples/         (one runnable app per framework)
-</FileTree>`} />
+<Code lang="jsx" code={"<FileTree>\n- nexum/            (facade: re-exports + the deep_link attribute)\n- nexum-macros/     (proc-macro: #[deep_link] bootstrap)\n- nexum-core/       (Config, DeepLinkHub, DeepLinkHandle, DeepLinkEvent)\n- nexum-platform/   (OS registration, global hub, plist, mobile, single-instance)\n- nexum-floem/      (adapter: Floem)\n- nexum-xilem/      (adapter: Xilem)\n- nexum-dioxus/     (adapter: Dioxus desktop)\n- nexum-leptos/     (adapter: Leptos, wasm-capable)\n- nexum-gpui/       (adapter: GPUI \u2014 outside the workspace, tracks Zed)\n- examples/         (one runnable app per framework)\n</FileTree>"} />
 
 Only the bottom of the stack knows about operating systems. `nexum-core` compiles with `#![forbid(unsafe_code)]` and no platform code at all; `nexum-platform` contains the three cfg-gated desktop backends plus portable generators; the adapters contain nothing but bridge logic into their framework's event model.
 

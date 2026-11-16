@@ -10,36 +10,21 @@ Chaque crate nexum est publiée depuis le même espace de travail à la même ve
 
 <Tabs>
     <TabItem label="Façade (recommandé)">
-<Code lang="toml" title="Cargo.toml" code={`[dependencies]
-nexum = "0.3"`} />
+<Code lang="toml" title="Cargo.toml" code={"[dependencies]\nnexum = \"0.3\""} />
 
         La façade ré-exporte `Config`, `DeepLinkHub`, `DeepLinkHandle`, l'attribut `#[deep_link]` et tout le module `platform`. Utilisez-la pour les applications de bureau qui veulent le chemin le plus court de la dépendance au lien profond fonctionnel.
     </TabItem>
     <TabItem label="Cœur + plateforme">
-<Code lang="toml" title="Cargo.toml" code={`[dependencies]
-nexum-core = "0.3"
-nexum-platform = "0.3"`} />
+<Code lang="toml" title="Cargo.toml" code={"[dependencies]\nnexum-core = \"0.3\"\nnexum-platform = \"0.3\""} />
 
         Utilisez cette forme lorsque vous ne voulez pas de macro d'attribut dans votre build, ou lorsque vous câblez l'enregistrement vous-même — par exemple dans une fonction d'amorçage existante avec une gestion d'erreur personnalisée autour de `nexum_platform::init`.
     </TabItem>
     <TabItem label="Adaptateur de framework">
-<Code lang="toml" title="Cargo.toml" code={`[dependencies]
-# Floem — la fonctionnalité \`signal\` tire floem lui-même
-nexum-floem = { version = "0.3", features = ["signal"] }
-
-# Xilem
-nexum-xilem = "0.3"
-
-# Dioxus (desktop)
-nexum-dioxus = "0.3"
-
-# Leptos — la fonctionnalité \`signal\` tire le cœur réactif de leptos
-nexum-leptos = { version = "0.3", features = ["signal"] }`} />
+<Code lang="toml" title="Cargo.toml" code={"[dependencies]\n# Floem \u2014 la fonctionnalit\u00e9 `signal` tire floem lui-m\u00eame\nnexum-floem = { version = \"0.3\", features = [\"signal\"] }\n\n# Xilem\nnexum-xilem = \"0.3\"\n\n# Dioxus (desktop)\nnexum-dioxus = \"0.3\"\n\n# Leptos \u2014 la fonctionnalit\u00e9 `signal` tire le c\u0153ur r\u00e9actif de leptos\nnexum-leptos = { version = \"0.3\", features = [\"signal\"] }"} />
 
         `nexum-gpui` n'est pas publiée sur crates.io parce qu'elle suit la branche `main` de Zed via une dépendance git. Dépendez-en directement depuis le dépôt :
 
-<Code lang="toml" title="Cargo.toml" code={`[dependencies]
-nexum-gpui = { git = "https://github.com/elcoosp/nexum" }`} />
+<Code lang="toml" title="Cargo.toml" code={"[dependencies]\nnexum-gpui = { git = \"https://github.com/elcoosp/nexum\" }"} />
     </TabItem>
 </Tabs>
 

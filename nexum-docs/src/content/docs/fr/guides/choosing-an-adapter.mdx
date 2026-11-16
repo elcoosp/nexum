@@ -23,47 +23,31 @@ Les cinq adaptateurs enveloppent le même cœur : chacun appelle `nexum_platform
 
 ### Floem
 
-<Code lang="rust" code={`let config = Config::builder().scheme("myapp").build().expect("valid config");
-let url_signal = signal(&config); // ReadSignal<Option<String>>`} />
+<Code lang="rust" code={"let config = Config::builder().scheme(\"myapp\").build().expect(\"valid config\");\nlet url_signal = signal(&config); // ReadSignal<Option<String>>"} />
 
 L'aide `signal` lance un thread d'arrière-plan nommé `nexum-floem` qui bloque sur le handle et alimente le runtime réactif de Floem via `create_signal_from_channel`. Le thread d'UI ne se réveille que lorsqu'une URL arrive.
 
 ### Xilem
 
-<Code lang="rust" code={`nexum_xilem::setup(&config).expect("deep-link setup");
-// dans votre logique d'application :
-let content = with_deep_links(base_view, |state: &mut AppState, url| {
-    state.last_url = Some(url);
-});`} />
+<Code lang="rust" code={"nexum_xilem::setup(&config).expect(\"deep-link setup\");\n// dans votre logique d'application :\nlet content = with_deep_links(base_view, |state: &mut AppState, url| {\n    state.last_url = Some(url);\n});"} />
 
 `with_deep_links` bifurque une tâche Xilem sur votre vue ; le callback tourne sur le thread d'application comme tout autre callback d'événement Xilem.
 
 ### Dioxus
 
-<Code lang="rust" code={`#[component]
-fn App() -> Element {
-    let deep_link = use_deep_link(); // Signal<Option<String>>
-    rsx! { p { "Dernier lien profond : {deep_link:?}" } }
-}
-
-// le lancement en un appel câble les événements Opened de tao dans le hub :
-launch_desktop(&nexum_config, desktop_config, app);`} />
+<Code lang="rust" code={"#[component]\nfn App() -> Element {\n    let deep_link = use_deep_link(); // Signal<Option<String>>\n    rsx! { p { \"Dernier lien profond : {deep_link:?}\" } }\n}\n\n// le lancement en un appel c\u00e2ble les \u00e9v\u00e9nements Opened de tao dans le hub :\nlaunch_desktop(&nexum_config, desktop_config, app);"} />
 
 `launch_desktop` effectue la configuration, attache le pont `Event::Opened` de tao, et lance votre application — `use_deep_link()` fonctionne alors comme n'importe quel autre hook.
 
 ### Leptos
 
-<Code lang="rust" code={`// natif : un seul appel enregistre et renvoie un signal réactif
-let url_signal = signal(&config); // RwSignal<Option<String>>`} />
+<Code lang="rust" code={"// natif : un seul appel enregistre et renvoie un signal r\u00e9actif\nlet url_signal = signal(&config); // RwSignal<Option<String>>"} />
 
 Dans le navigateur (où l'enregistrement de schéma est impossible), construisez votre propre hub et appelez `signal_from_handle(&hub.handle())` — cela ne touche jamais l'OS et fonctionne sous `wasm32-unknown-unknown`.
 
 ### GPUI
 
-<Code lang="rust" code={`let handle = setup_deep_links(&app, &config)?;
-attach_deep_link(handle, view.clone(), cx, |view, _cx, url| {
-    view.set_url(url);
-});`} />
+<Code lang="rust" code={"let handle = setup_deep_links(&app, &config)?;\nattach_deep_link(handle, view.clone(), cx, |view, _cx, url| {\n    view.set_url(url);\n});"} />
 
 `setup_deep_links` installe le callback `on_open_urls` de GPUI *avant* l'enregistrement OS afin que les événements précoces ne soient pas perdus, et `attach_deep_link` lance une tâche qui réveille votre entité pour chaque URL.
 

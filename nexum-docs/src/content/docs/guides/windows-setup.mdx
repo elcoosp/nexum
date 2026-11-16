@@ -21,11 +21,7 @@ For every scheme in your `Config`, nexum writes three registry values below `HKE
 
 The executable path comes from `std::env::current_exe()` at registration time, and the icon comes from `Config::icon_path` when you set one:
 
-<Code lang="rust" code={`let config = Config::builder()
-    .scheme("myapp")
-    .icon_path("C:/apps/icons/myapp.ico")
-    .build()
-    .expect("valid config");`} />
+<Code lang="rust" code={"let config = Config::builder()\n    .scheme(\"myapp\")\n    .icon_path(\"C:/apps/icons/myapp.ico\")\n    .build()\n    .expect(\"valid config\");"} />
 
 Because the `shell\open\command` template passes `"%1"` as an argument, the OS launches your executable with the URL as a command-line parameter for every deep link — both cold starts and warm invocations.
 

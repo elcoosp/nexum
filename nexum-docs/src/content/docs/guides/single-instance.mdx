@@ -10,8 +10,7 @@ On Windows and Linux a deep link usually launches a **second** instance of your 
 
 ## Enable the feature
 
-<Code lang="toml" title="Cargo.toml" code={`[dependencies]
-nexum = { version = "0.3", features = ["single-instance"] }`} />
+<Code lang="toml" title="Cargo.toml" code={"[dependencies]\nnexum = { version = \"0.3\", features = [\"single-instance\"] }"} />
 
 The module lives in the platform layer, so `nexum::platform::single_instance` is the entry point (or `nexum_platform::single_instance` if you depend on the platform crate directly).
 
@@ -19,21 +18,7 @@ The module lives in the platform layer, so `nexum::platform::single_instance` is
 
 Call `acquire` **after** the hub is initialized (`init`, `init_with` or `set_hub` — otherwise you get `Error::HubNotSet`), passing the URLs the current process should deliver:
 
-<Code lang="rust" code={`use nexum::platform::single_instance::{acquire, Acquisition};
-
-let urls = config.extract_launch_urls(std::env::args().skip(1));
-
-match acquire(&config, &urls)? {
-    Acquisition::Primary(_guard) => {
-                    // This process owns the deep-link socket.
-                    // Keep \`_guard\` alive for the whole app lifetime.
-                    run_app();
-    }
-    Acquisition::HandedOff { forwarded } => {
-                    // Another instance answered; \`forwarded\` URLs were
-                    // delivered to it. Exit this process now.
-    }
-}`} />
+<Code lang="rust" code={"use nexum::platform::single_instance::{acquire, Acquisition};\n\nlet urls = config.extract_launch_urls(std::env::args().skip(1));\n\nmatch acquire(&config, &urls)? {\n    Acquisition::Primary(_guard) => {\n                    // This process owns the deep-link socket.\n                    // Keep `_guard` alive for the whole app lifetime.\n                    run_app();\n    }\n    Acquisition::HandedOff { forwarded } => {\n                    // Another instance answered; `forwarded` URLs were\n                    // delivered to it. Exit this process now.\n    }\n}"} />
 
 Each forwarded URL arrives in the primary's hub as a normal `DeepLinkEvent` with `Source::System`, so consumers treat hand-offs exactly like OS-delivered links.
 

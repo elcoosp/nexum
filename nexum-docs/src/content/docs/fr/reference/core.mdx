@@ -66,18 +66,7 @@ Le hub possède la file d'événements. C'est un canal multi-producteur, **multi
 | `try_push_event` | `fn try_push_event(&self, event: DeepLinkEvent) -> Result<(), Error>` | Variante non bloquante |
 | `handle` | `fn handle(&self) -> DeepLinkHandle` | Crée un consommateur supplémentaire |
 
-<Code lang="rust" code={`use nexum_core::{Config, DeepLinkHub, Source};
-
-let config = Config::new(["myapp"]).validate().expect("valid config");
-let hub = DeepLinkHub::new();
-let handle = hub.handle();
-
-hub.push_url("myapp://open/settings");
-assert_eq!(handle.try_recv().as_deref(), Some("myapp://open/settings"));
-
-hub.push_launch_url("myapp://open/doc/42");
-let event = handle.recv_event_blocking().expect("event");
-assert_eq!(event.source, Source::CommandLine);`} />
+<Code lang="rust" code={"use nexum_core::{Config, DeepLinkHub, Source};\n\nlet config = Config::new([\"myapp\"]).validate().expect(\"valid config\");\nlet hub = DeepLinkHub::new();\nlet handle = hub.handle();\n\nhub.push_url(\"myapp://open/settings\");\nassert_eq!(handle.try_recv().as_deref(), Some(\"myapp://open/settings\"));\n\nhub.push_launch_url(\"myapp://open/doc/42\");\nlet event = handle.recv_event_blocking().expect(\"event\");\nassert_eq!(event.source, Source::CommandLine);"} />
 
 ## DeepLinkHandle — le consommateur
 

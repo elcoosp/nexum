@@ -19,14 +19,7 @@ import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 `signal(&config)` effectue l'enregistrement (**panique** en cas d'échec), puis lance un thread d'arrière-plan nommé `nexum-floem` qui bloque sur `recv_blocking` et transmet chaque URL dans une boîte aux lettres crossbeam à un emplacement. La boîte aux lettres est connectée au runtime de Floem avec `create_signal_from_channel`, donc le thread d'UI ne se réveille que lorsqu'une URL arrive. Le signal renvoyé démarre à `None` et contient l'URL la plus récente.
 
-<Code lang="rust" code={`use floem::prelude::*;
-use nexum_floem::{Config, signal};
-
-let config = Config::builder().scheme("myapp").build().expect("valid config");
-let url_signal = signal(&config); // ReadSignal<Option<String>>
-
-// dans une vue :
-label(move || url_signal.get().unwrap_or_else(|| "Aucun lien profond reçu".into()))`} />
+<Code lang="rust" code={"use floem::prelude::*;\nuse nexum_floem::{Config, signal};\n\nlet config = Config::builder().scheme(\"myapp\").build().expect(\"valid config\");\nlet url_signal = signal(&config); // ReadSignal<Option<String>>\n\n// dans une vue :\nlabel(move || url_signal.get().unwrap_or_else(|| \"Aucun lien profond re\u00e7u\".into()))"} />
 
 <Aside type="danger">
 `signal` est `#[must_use]` et panique en cas d'échec d'enregistrement (`nexum-floem: deep-link registration failed`). Pour un contrôle faillible, appelez `setup` et câblez le `DeepLinkHandle` renvoyé via votre propre canal ; la fonctionnalité signal est une commodité, pas une exigence.

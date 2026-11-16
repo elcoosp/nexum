@@ -14,7 +14,7 @@ Sous Linux, nexum enregistre les schémas d'URL de manière conforme aux standar
 2. Il crée `{data_local_dir}/applications/` si nécessaire et écrit `{app_name}.desktop`. Le répertoire vient de `dirs::data_local_dir()`, donc `XDG_DATA_HOME` est honoré lorsqu'il est défini.
 3. Pour chaque schéma configuré, il invoque :
 
-<Code lang="bash" title="Terminal" code={`xdg-mime default {app_name}.desktop x-scheme-handler/{scheme}`} />
+<Code lang="bash" title="Terminal" code={"xdg-mime default {app_name}.desktop x-scheme-handler/{scheme}"} />
 
 Un code de sortie non nul de `xdg-mime` apparaît comme `Error::Platform` — signifiant typiquement que l'outil n'est pas installé (`sudo apt install xdg-utils` sur les systèmes basés sur Debian) ou que l'environnement n'a pas de base MIME utilisable.
 
@@ -22,13 +22,7 @@ Un code de sortie non nul de `xdg-mime` apparaît comme `Error::Platform` — si
 
 L'entrée que nexum écrit suit exactement ce modèle :
 
-<Code lang="ini" code={`[Desktop Entry]
-Type=Application
-Name={app_name}
-Exec={quoted_exec} %u
-StartupNotify=false
-Icon={icon}
-MimeType=x-scheme-handler/myapp;x-scheme-handler/other;`} />
+<Code lang="ini" code={"[Desktop Entry]\nType=Application\nName={app_name}\nExec={quoted_exec} %u\nStartupNotify=false\nIcon={icon}\nMimeType=x-scheme-handler/myapp;x-scheme-handler/other;"} />
 
 Deux détails valent la peine d'être connus :
 
@@ -37,11 +31,7 @@ Deux détails valent la peine d'être connus :
 
 Vous définissez les deux valeurs via la configuration :
 
-<Code lang="rust" code={`let config = Config::builder()
-    .scheme("myapp")
-    .icon_path("/usr/share/icons/myapp.png")
-    .build()
-    .expect("valid config");`} />
+<Code lang="rust" code={"let config = Config::builder()\n    .scheme(\"myapp\")\n    .icon_path(\"/usr/share/icons/myapp.png\")\n    .build()\n    .expect(\"valid config\");"} />
 
 ## Comment les URL atteignent votre application
 

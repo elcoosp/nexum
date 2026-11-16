@@ -12,17 +12,11 @@ Les plateformes mobiles n'ont aucune API que nexum puisse appeler pour enregistr
 
 **Android** — `nexum_platform::mobile::android_manifest_intent_filter` rend un `<intent-filter>` complet (action VIEW, catégories `DEFAULT` + `BROWSABLE`, un `<data android:scheme="...">` par schéma configuré). Collez-le dans l'activité de votre `AndroidManifest.xml` :
 
-<Code lang="rust" code={`let config = Config::builder().scheme("myapp").build().expect("valid config");
-let filter_xml = nexum_platform::mobile::android_manifest_intent_filter(&config);`} />
+<Code lang="rust" code={"let config = Config::builder().scheme(\"myapp\").build().expect(\"valid config\");\nlet filter_xml = nexum_platform::mobile::android_manifest_intent_filter(&config);"} />
 
 Forme générée :
 
-<Code lang="xml" code={`<intent-filter>
- <action android:name="android.intent.action.VIEW" />
- <category android:name="android.intent.category.DEFAULT" />
- <category android:name="android.intent.category.BROWSABLE" />
- <data android:scheme="myapp" />
-</intent-filter>`} />
+<Code lang="xml" code={"<intent-filter>\n <action android:name=\"android.intent.action.VIEW\" />\n <category android:name=\"android.intent.category.DEFAULT\" />\n <category android:name=\"android.intent.category.BROWSABLE\" />\n <data android:scheme=\"myapp\" />\n</intent-filter>"} />
 
 **iOS** — utilisez `nexum_platform::plist::url_types_xml` pour rendre le bloc `CFBundleURLTypes` du `Info.plist` de votre application, exactement comme sous macOS de bureau. `plist::missing_schemes` vous permet de vérifier le plist construit contre un `Config` dans un test.
 
@@ -37,11 +31,7 @@ Initialisez le hub global une fois au démarrage — par exemple en stockant un 
 
 Les deux poussent dans le hub global en tant que `Source::System` et renvoient `Err(Error::HubNotSet)` si le hub n'a jamais été initialisé, donc une erreur de câblage échoue bruyamment au premier usage :
 
-<Code lang="rust" code={`// colle JNI Android (pseudo-appel) :
-nexum_platform::mobile::push_intent_url(intent_data_string)?;
-
-// délégué iOS (pseudo-appel) :
-nexum_platform::mobile::push_open_urls(url_strings)?;`} />
+<Code lang="rust" code={"// colle JNI Android (pseudo-appel) :\nnexum_platform::mobile::push_intent_url(intent_data_string)?;\n\n// d\u00e9l\u00e9gu\u00e9 iOS (pseudo-appel) :\nnexum_platform::mobile::push_open_urls(url_strings)?;"} />
 
 <Aside type="danger">
 Les fonctions d'entrée sont conditionnées par la cible : `push_intent_url` compile seulement sur `target_os = "android"` et `push_open_urls` seulement sur `target_os = "ios"`. Conditionnez votre code de colle avec les mêmes attributs cfg. La CI vérifie les types de la crate de plateforme contre de vraies cibles Android et iOS, donc cela ne peut pas pourrir silencieusement.

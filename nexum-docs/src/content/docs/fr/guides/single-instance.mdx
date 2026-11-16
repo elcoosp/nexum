@@ -10,8 +10,7 @@ Sous Windows et Linux, un lien profond lance généralement une **seconde** inst
 
 ## Activer la fonctionnalité
 
-<Code lang="toml" title="Cargo.toml" code={`[dependencies]
-nexum = { version = "0.3", features = ["single-instance"] }`} />
+<Code lang="toml" title="Cargo.toml" code={"[dependencies]\nnexum = { version = \"0.3\", features = [\"single-instance\"] }"} />
 
 Le module vit dans la couche plateforme, donc `nexum::platform::single_instance` est le point d'entrée (ou `nexum_platform::single_instance` si vous dépendez directement de la crate de plateforme).
 
@@ -19,21 +18,7 @@ Le module vit dans la couche plateforme, donc `nexum::platform::single_instance`
 
 Appelez `acquire` **après** l'initialisation du hub (`init`, `init_with` ou `set_hub` — sinon vous obtenez `Error::HubNotSet`), en passant les URL que le processus courant doit livrer :
 
-<Code lang="rust" code={`use nexum::platform::single_instance::{acquire, Acquisition};
-
-let urls = config.extract_launch_urls(std::env::args().skip(1));
-
-match acquire(&config, &urls)? {
-    Acquisition::Primary(_guard) => {
-                    // Ce processus possède le socket de lien profond.
-                    // Gardez \`_guard\` vivant pendant toute la durée de vie de l'application.
-                    run_app();
-    }
-    Acquisition::HandedOff { forwarded } => {
-                    // Une autre instance a répondu ; les URL \`forwarded\` ont été
-                    // livrées. Quittez ce processus maintenant.
-    }
-}`} />
+<Code lang="rust" code={"use nexum::platform::single_instance::{acquire, Acquisition};\n\nlet urls = config.extract_launch_urls(std::env::args().skip(1));\n\nmatch acquire(&config, &urls)? {\n    Acquisition::Primary(_guard) => {\n                    // Ce processus poss\u00e8de le socket de lien profond.\n                    // Gardez `_guard` vivant pendant toute la dur\u00e9e de vie de l'application.\n                    run_app();\n    }\n    Acquisition::HandedOff { forwarded } => {\n                    // Une autre instance a r\u00e9pondu ; les URL `forwarded` ont \u00e9t\u00e9\n                    // livr\u00e9es. Quittez ce processus maintenant.\n    }\n}"} />
 
 Chaque URL transférée arrive dans le hub du processus primaire comme un `DeepLinkEvent` normal avec `Source::System`, donc les consommateurs traitent les transferts exactement comme les liens livrés par l'OS.
 

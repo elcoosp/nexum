@@ -18,34 +18,23 @@ Dans ce tutoriel, vous construisez un programme Rust complet qui possède le sch
 
 Créez une nouvelle crate binaire et déplacez-vous dedans :
 
-<Code lang="bash" title="Terminal" code={`cargo new nexum-demo
-cd nexum-demo`} />
+<Code lang="bash" title="Terminal" code={"cargo new nexum-demo\ncd nexum-demo"} />
 
 ## Étape 2 — Ajouter la façade nexum
 
 La façade `nexum` est le chemin à une seule dépendance : elle ré-exporte `Config`, la couche plateforme et l'attribut `#[deep_link]`.
 
-<Code lang="bash" title="Terminal" code={`cargo add nexum`} />
+<Code lang="bash" title="Terminal" code={"cargo add nexum"} />
 
 Votre `Cargo.toml` gagne :
 
-<Code lang="toml" title="Cargo.toml" code={`[dependencies]
-nexum = "0.3"`} />
+<Code lang="toml" title="Cargo.toml" code={"[dependencies]\nnexum = \"0.3\""} />
 
 ## Étape 3 — Écrire le bootstrap
 
 Remplacez le contenu de `src/main.rs` par :
 
-<Code lang="rust" title="src/main.rs" code={`use nexum::deep_link;
-
-#[deep_link(schemes = ["myapp"])]
-fn main() {
-    // L'enregistrement se produit avant l'exécution de ce corps ; le handle
-    // consommateur est lié à \`_nexum_handle\`.
-    if let Ok(url) = _nexum_handle.recv_blocking() {
-                    println!("opened {url}");
-    }
-}`} />
+<Code lang="rust" title="src/main.rs" code={"use nexum::deep_link;\n\n#[deep_link(schemes = [\"myapp\"])]\nfn main() {\n    // L'enregistrement se produit avant l'ex\u00e9cution de ce corps ; le handle\n    // consommateur est li\u00e9 \u00e0 `_nexum_handle`.\n    if let Ok(url) = _nexum_handle.recv_blocking() {\n                    println!(\"opened {url}\");\n    }\n}"} />
 
 L'attribut `#[deep_link]` réécrit votre `main` pour que nexum construise un `Config` validé et appelle `nexum::platform::init` *avant* l'exécution de votre première instruction. Le `DeepLinkHandle` renvoyé est lié à la liaison générée `_nexum_handle`, que vous utilisez ensuite pour recevoir les URL.
 
@@ -57,7 +46,7 @@ Le code généré panique si la configuration est invalide ou si l'enregistremen
 
 Démarrez le programme et laissez-le tourner :
 
-<Code lang="bash" title="Terminal" code={`cargo run`} />
+<Code lang="bash" title="Terminal" code={"cargo run"} />
 
 Au premier lancement, nexum enregistre `myapp://` pour votre utilisateur :
 
@@ -69,14 +58,7 @@ Au premier lancement, nexum enregistre `myapp://` pour votre utilisateur :
 
 L'application toujours en cours d'exécution, ouvrez une URL `myapp://` depuis un autre terminal :
 
-<Code lang="bash" title="Terminal" code={`# macOS
-open "myapp://open/settings"
-
-# Linux
-xdg-open "myapp://open/settings"
-
-# Windows (PowerShell)
-Start-Process "myapp://open/settings"`} />
+<Code lang="bash" title="Terminal" code={"# macOS\nopen \"myapp://open/settings\"\n\n# Linux\nxdg-open \"myapp://open/settings\"\n\n# Windows (PowerShell)\nStart-Process \"myapp://open/settings\""} />
 
 Le système d'exploitation recherche le gestionnaire et lance — ou, sous Windows et Linux, relance — l'exécutable enregistré avec l'URL. Nexum détecte l'URL parmi les arguments du processus et la relaie dans votre application.
 

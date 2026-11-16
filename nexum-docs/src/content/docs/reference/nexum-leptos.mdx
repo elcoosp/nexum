@@ -21,7 +21,7 @@ Everything downstream is ordinary reactive code: `signal_from_handle` creates `R
 
 ## Native usage
 
-<Code lang="rust" code={`let url_signal = nexum_leptos::signal(&config); // RwSignal<Option<String>>`} />
+<Code lang="rust" code={"let url_signal = nexum_leptos::signal(&config); // RwSignal<Option<String>>"} />
 
 `signal` calls `setup` internally and expects registration to succeed (`nexum-leptos: deep-link registration failed` on failure). The returned `RwSignal` starts as `None` and is replaced by each URL.
 
@@ -29,9 +29,7 @@ Everything downstream is ordinary reactive code: `signal_from_handle` creates `R
 
 A browser cannot register URL schemes, so invert the flow: own a hub yourself, expose deep-link URLs to it (for example from a `?url=` query parameter or a test harness), and derive the signal from the handle:
 
-<Code lang="rust" code={`let hub = DeepLinkHub::new();
-let url_signal = signal_from_handle(&hub.handle()); // no OS access
-hub.push_url("myapp://demo/open");`} />
+<Code lang="rust" code={"let hub = DeepLinkHub::new();\nlet url_signal = signal_from_handle(&hub.handle()); // no OS access\nhub.push_url(\"myapp://demo/open\");"} />
 
 `signal_from_handle` spawns the relay with `spawn_local`, which requires an initialized async executor — Leptos sets one up in `mount_to_body` on web (and SSR runtimes do the same server-side). The adapter's own tests drive the identical bridge headlessly on a tokio `LocalSet`, so wasm behavior is covered without a browser.
 

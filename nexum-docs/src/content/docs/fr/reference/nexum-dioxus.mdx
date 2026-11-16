@@ -20,24 +20,13 @@ import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 ## Le chemin en un appel
 
-<Code lang="rust" code={`let nexum_config = Config::builder().scheme("myapp").build().expect("valid config");
-
-let desktop_config = DesktopConfig::new()
-    .with_window(WindowBuilder::new().with_title("Deep Link Demo"));
-
-launch_desktop(&nexum_config, desktop_config, app);`} />
+<Code lang="rust" code={"let nexum_config = Config::builder().scheme(\"myapp\").build().expect(\"valid config\");\n\nlet desktop_config = DesktopConfig::new()\n    .with_window(WindowBuilder::new().with_title(\"Deep Link Demo\"));\n\nlaunch_desktop(&nexum_config, desktop_config, app);"} />
 
 `launch_desktop` exécute `setup` (**panique** en cas d'échec avec `nexum-dioxus: deep-link setup failed`), enveloppe la configuration de bureau avec `with_deep_link_handler`, et lance via `LaunchBuilder`. Notez que le paramètre `app` est un simple pointeur de fonction `fn() -> Element`.
 
 ## Le hook
 
-<Code lang="rust" code={`#[component]
-fn App() -> Element {
-    let deep_link = use_deep_link();
-    rsx! {
-                    p { "Dernier lien profond : {deep_link:?}" }
-    }
-}`} />
+<Code lang="rust" code={"#[component]\nfn App() -> Element {\n    let deep_link = use_deep_link();\n    rsx! {\n                    p { \"Dernier lien profond : {deep_link:?}\" }\n    }\n}"} />
 
 Le signal démarre à `None` et est remplacé par chaque URL entrante. Un `use_future` attend en interne `handle.recv()` et écrit dans le signal.
 

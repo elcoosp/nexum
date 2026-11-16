@@ -20,14 +20,7 @@ import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 ## Utilisation
 
-<Code lang="rust" code={`nexum_xilem::setup(&config).expect("deep-link setup");
-
-fn app_logic(state: &mut AppState) -> impl WidgetView<AppState> + use<> {
-    let content = /* votre vue normale */;
-    with_deep_links(content, |state: &mut AppState, url| {
-                    state.last_url = Some(url);
-    })
-}`} />
+<Code lang="rust" code={"nexum_xilem::setup(&config).expect(\"deep-link setup\");\n\nfn app_logic(state: &mut AppState) -> impl WidgetView<AppState> + use<> {\n    let content = /* votre vue normale */;\n    with_deep_links(content, |state: &mut AppState, url| {\n                    state.last_url = Some(url);\n    })\n}"} />
 
 ## Comment fonctionne la livraison
 

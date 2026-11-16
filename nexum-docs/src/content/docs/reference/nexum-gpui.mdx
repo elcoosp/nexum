@@ -8,8 +8,7 @@ import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 `nexum-gpui` integrates deep links into GPUI applications (Zed-style UIs). The crate is **not a workspace member** and is not published to crates.io: GPUI itself moves with Zed's `main` branch, so `nexum-gpui` tracks it through a git dependency and is verified separately. Depend on it directly from the repository:
 
-<Code lang="toml" title="Cargo.toml" code={`[dependencies]
-nexum-gpui = { git = "https://github.com/elcoosp/nexum" }`} />
+<Code lang="toml" title="Cargo.toml" code={"[dependencies]\nnexum-gpui = { git = \"https://github.com/elcoosp/nexum\" }"} />
 
 ## API
 
@@ -26,12 +25,7 @@ Calling `setup_deep_links` a second time fails with `Error::HubAlreadySet` — t
 
 ## Receiving URLs in a view
 
-<Code lang="rust" code={`let handle = setup_deep_links(&app, &config)?;
-
-// after opening a window and creating your view entity:
-attach_deep_link(handle, view.clone(), cx, |view, _cx, url| {
-    view.set_url(url);
-});`} />
+<Code lang="rust" code={"let handle = setup_deep_links(&app, &config)?;\n\n// after opening a window and creating your view entity:\nattach_deep_link(handle, view.clone(), cx, |view, _cx, url| {\n    view.set_url(url);\n});"} />
 
 `attach_deep_link` spawns a task on GPUI's executor and detaches it: for every received URL it updates the entity through `view.update(...)` and calls `cx.notify()` so GPUI re-renders. The task lives as long as the app or until the channel shuts down.
 

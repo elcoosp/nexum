@@ -18,28 +18,13 @@ import { Aside, Badge, Code, LinkCard } from '@astrojs/starlight/components';
 
 Unknown keys, bare values, or non-string values fail to compile with a targeted message — for example ``unknown key `foo`; expected `schemes`, `app_links` or `icon` ``.
 
-<Code lang="rust" title="src/main.rs" code={`use nexum::deep_link;
-
-#[deep_link(schemes = ["myapp", "myapp-alt"], icon = "/icons/app.png")]
-fn main() {
-    if let Ok(url) = _nexum_handle.recv_blocking() {
-                    println!("opened {url}");
-    }
-}`} />
+<Code lang="rust" title="src/main.rs" code={"use nexum::deep_link;\n\n#[deep_link(schemes = [\"myapp\", \"myapp-alt\"], icon = \"/icons/app.png\")]\nfn main() {\n    if let Ok(url) = _nexum_handle.recv_blocking() {\n                    println!(\"opened {url}\");\n    }\n}"} />
 
 ## Generated code
 
 The macro leaves your attributes, visibility and signature untouched and prepends one binding to the body:
 
-<Code lang="rust" code={`let _nexum_handle = {
-    let __nexum_config = ::nexum::Config::builder()
-                    .scheme("myapp")
-                    .build()
-                    .expect("nexum: invalid deep-link configuration");
-    ::nexum::platform::init(&__nexum_config)
-                    .expect("nexum: deep-link initialization failed")
-};
-// ...your original statements...`} />
+<Code lang="rust" code={"let _nexum_handle = {\n    let __nexum_config = ::nexum::Config::builder()\n                    .scheme(\"myapp\")\n                    .build()\n                    .expect(\"nexum: invalid deep-link configuration\");\n    ::nexum::platform::init(&__nexum_config)\n                    .expect(\"nexum: deep-link initialization failed\")\n};\n// ...your original statements..."} />
 
 ## Constraints
 

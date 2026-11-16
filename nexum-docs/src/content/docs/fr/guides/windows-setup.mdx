@@ -21,11 +21,7 @@ Pour chaque schéma de votre `Config`, nexum écrit trois valeurs de registre so
 
 Le chemin de l'exécutable vient de `std::env::current_exe()` au moment de l'enregistrement, et l'icône vient de `Config::icon_path` lorsque vous en définissez une :
 
-<Code lang="rust" code={`let config = Config::builder()
-    .scheme("myapp")
-    .icon_path("C:/apps/icons/myapp.ico")
-    .build()
-    .expect("valid config");`} />
+<Code lang="rust" code={"let config = Config::builder()\n    .scheme(\"myapp\")\n    .icon_path(\"C:/apps/icons/myapp.ico\")\n    .build()\n    .expect(\"valid config\");"} />
 
 Parce que le modèle `shell\open\command` passe `"%1"` comme argument, l'OS lance votre exécutable avec l'URL comme paramètre de ligne de commande pour chaque lien profond — à la fois les démarrages à froid et les invocations à chaud.
 

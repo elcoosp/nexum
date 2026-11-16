@@ -21,7 +21,7 @@ Tout ce qui est en aval est du code réactif ordinaire : `signal_from_handle` cr
 
 ## Utilisation native
 
-<Code lang="rust" code={`let url_signal = nexum_leptos::signal(&config); // RwSignal<Option<String>>`} />
+<Code lang="rust" code={"let url_signal = nexum_leptos::signal(&config); // RwSignal<Option<String>>"} />
 
 `signal` appelle `setup` en interne et attend que l'enregistrement réussisse (`nexum-leptos: deep-link registration failed` en cas d'échec). Le `RwSignal` renvoyé démarre à `None` et est remplacé par chaque URL.
 
@@ -29,9 +29,7 @@ Tout ce qui est en aval est du code réactif ordinaire : `signal_from_handle` cr
 
 Un navigateur ne peut pas enregistrer de schémas d'URL, donc inversez le flux : possédez un hub vous-même, exposez-lui des URL de lien profond (par exemple depuis un paramètre de requête `?url=` ou un harnais de test), et dérivez le signal depuis le handle :
 
-<Code lang="rust" code={`let hub = DeepLinkHub::new();
-let url_signal = signal_from_handle(&hub.handle()); // aucun accès à l'OS
-hub.push_url("myapp://demo/open");`} />
+<Code lang="rust" code={"let hub = DeepLinkHub::new();\nlet url_signal = signal_from_handle(&hub.handle()); // aucun acc\u00e8s \u00e0 l'OS\nhub.push_url(\"myapp://demo/open\");"} />
 
 `signal_from_handle` lance le relais avec `spawn_local`, ce qui nécessite un exécuteur asynchrone initialisé — Leptos en configure un dans `mount_to_body` côté web (et les runtimes SSR font de même côté serveur). Les tests propres de l'adaptateur pilotent le pont identique sans tête sur un `LocalSet` tokio, donc le comportement wasm est couvert sans navigateur.
 

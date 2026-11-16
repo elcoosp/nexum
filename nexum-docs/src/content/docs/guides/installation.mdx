@@ -10,36 +10,21 @@ Every nexum crate publishes from the same workspace at the same version, so you 
 
 <Tabs>
     <TabItem label="Facade (recommended)">
-<Code lang="toml" title="Cargo.toml" code={`[dependencies]
-nexum = "0.3"`} />
+<Code lang="toml" title="Cargo.toml" code={"[dependencies]\nnexum = \"0.3\""} />
 
         The facade re-exports `Config`, `DeepLinkHub`, `DeepLinkHandle`, the `#[deep_link]` attribute and the whole `platform` module. Use it for desktop apps that want the shortest path from dependency to working deep links.
     </TabItem>
     <TabItem label="Core + platform">
-<Code lang="toml" title="Cargo.toml" code={`[dependencies]
-nexum-core = "0.3"
-nexum-platform = "0.3"`} />
+<Code lang="toml" title="Cargo.toml" code={"[dependencies]\nnexum-core = \"0.3\"\nnexum-platform = \"0.3\""} />
 
         Use this shape when you do not want an attribute macro in your build, or when you wire registration yourself — for example inside an existing bootstrap function with custom error handling around `nexum_platform::init`.
     </TabItem>
     <TabItem label="Framework adapter">
-<Code lang="toml" title="Cargo.toml" code={`[dependencies]
-# Floem — the \`signal\` feature pulls in floem itself
-nexum-floem = { version = "0.3", features = ["signal"] }
-
-# Xilem
-nexum-xilem = "0.3"
-
-# Dioxus (desktop)
-nexum-dioxus = "0.3"
-
-# Leptos — the \`signal\` feature pulls in leptos' reactive core
-nexum-leptos = { version = "0.3", features = ["signal"] }`} />
+<Code lang="toml" title="Cargo.toml" code={"[dependencies]\n# Floem \u2014 the `signal` feature pulls in floem itself\nnexum-floem = { version = \"0.3\", features = [\"signal\"] }\n\n# Xilem\nnexum-xilem = \"0.3\"\n\n# Dioxus (desktop)\nnexum-dioxus = \"0.3\"\n\n# Leptos \u2014 the `signal` feature pulls in leptos' reactive core\nnexum-leptos = { version = \"0.3\", features = [\"signal\"] }"} />
 
         `nexum-gpui` is not published to crates.io because it tracks Zed's `main` branch through a git dependency. Depend on it directly from the repository:
 
-<Code lang="toml" title="Cargo.toml" code={`[dependencies]
-nexum-gpui = { git = "https://github.com/elcoosp/nexum" }`} />
+<Code lang="toml" title="Cargo.toml" code={"[dependencies]\nnexum-gpui = { git = \"https://github.com/elcoosp/nexum\" }"} />
     </TabItem>
 </Tabs>
 

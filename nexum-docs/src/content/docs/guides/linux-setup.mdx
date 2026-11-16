@@ -14,7 +14,7 @@ On Linux, nexum registers URL schemes the standards-compliant way: it writes a f
 2. It creates `{data_local_dir}/applications/` if needed and writes `{app_name}.desktop`. The directory comes from `dirs::data_local_dir()`, so `XDG_DATA_HOME` is honored when set.
 3. For every configured scheme it invokes:
 
-<Code lang="bash" title="Terminal" code={`xdg-mime default {app_name}.desktop x-scheme-handler/{scheme}`} />
+<Code lang="bash" title="Terminal" code={"xdg-mime default {app_name}.desktop x-scheme-handler/{scheme}"} />
 
 A non-zero exit status from `xdg-mime` surfaces as `Error::Platform` — typically meaning the tool is not installed (`sudo apt install xdg-utils` on Debian-based systems) or the environment has no usable MIME database.
 
@@ -22,13 +22,7 @@ A non-zero exit status from `xdg-mime` surfaces as `Error::Platform` — typical
 
 The entry nexum writes follows this exact template:
 
-<Code lang="ini" code={`[Desktop Entry]
-Type=Application
-Name={app_name}
-Exec={quoted_exec} %u
-StartupNotify=false
-Icon={icon}
-MimeType=x-scheme-handler/myapp;x-scheme-handler/other;`} />
+<Code lang="ini" code={"[Desktop Entry]\nType=Application\nName={app_name}\nExec={quoted_exec} %u\nStartupNotify=false\nIcon={icon}\nMimeType=x-scheme-handler/myapp;x-scheme-handler/other;"} />
 
 Two details worth knowing:
 
@@ -37,11 +31,7 @@ Two details worth knowing:
 
 You set both values through the config:
 
-<Code lang="rust" code={`let config = Config::builder()
-    .scheme("myapp")
-    .icon_path("/usr/share/icons/myapp.png")
-    .build()
-    .expect("valid config");`} />
+<Code lang="rust" code={"let config = Config::builder()\n    .scheme(\"myapp\")\n    .icon_path(\"/usr/share/icons/myapp.png\")\n    .build()\n    .expect(\"valid config\");"} />
 
 ## How URLs reach your app
 

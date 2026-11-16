@@ -25,13 +25,7 @@ Toute la pile nexum partage un seul type d'erreur : `nexum_core::Error`, constru
 
 Les variantes d'erreur sont de simples variantes d'énumération, donc `matches!` est la garde idiomatique :
 
-<Code lang="rust" code={`use nexum_core::{Config, Error};
-
-let err = Config::builder().build().expect_err("no schemes");
-assert!(matches!(err, Error::NoSchemes));
-
-let err = Config::validate_scheme("1bad").expect_err("bad scheme");
-assert!(matches!(err, Error::InvalidScheme(_)));`} />
+<Code lang="rust" code={"use nexum_core::{Config, Error};\n\nlet err = Config::builder().build().expect_err(\"no schemes\");\nassert!(matches!(err, Error::NoSchemes));\n\nlet err = Config::validate_scheme(\"1bad\").expect_err(\"bad scheme\");\nassert!(matches!(err, Error::InvalidScheme(_)));"} />
 
 ## Conseils de rétablissement
 

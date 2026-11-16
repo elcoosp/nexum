@@ -25,13 +25,7 @@ The whole nexum stack shares one error type: `nexum_core::Error`, built with `th
 
 Error variants are plain enum variants, so `matches!` is the idiomatic guard:
 
-<Code lang="rust" code={`use nexum_core::{Config, Error};
-
-let err = Config::builder().build().expect_err("no schemes");
-assert!(matches!(err, Error::NoSchemes));
-
-let err = Config::validate_scheme("1bad").expect_err("bad scheme");
-assert!(matches!(err, Error::InvalidScheme(_)));`} />
+<Code lang="rust" code={"use nexum_core::{Config, Error};\n\nlet err = Config::builder().build().expect_err(\"no schemes\");\nassert!(matches!(err, Error::NoSchemes));\n\nlet err = Config::validate_scheme(\"1bad\").expect_err(\"bad scheme\");\nassert!(matches!(err, Error::InvalidScheme(_)));"} />
 
 ## Recovery guidance
 

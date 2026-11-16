@@ -34,21 +34,11 @@ La crate `nexum` est une façade de commodité : elle rassemble les trois brique
 
 La forme prévue est un attribut sur `main` :
 
-<Code lang="rust" title="src/main.rs" code={`use nexum::deep_link;
-
-#[deep_link(schemes = ["myapp"], icon = "/icons/app.png")]
-fn main() {
-    if let Ok(url) = _nexum_handle.recv_blocking() {
-                    println!("opened {url}");
-    }
-}`} />
+<Code lang="rust" title="src/main.rs" code={"use nexum::deep_link;\n\n#[deep_link(schemes = [\"myapp\"], icon = \"/icons/app.png\")]\nfn main() {\n    if let Ok(url) = _nexum_handle.recv_blocking() {\n                    println!(\"opened {url}\");\n    }\n}"} />
 
 Vous préférez un contrôle explicite ? L'attribut est optionnel — `nexum::platform::init(&config)` renvoie le même `DeepLinkHandle` sans aucune macro :
 
-<Code lang="rust" code={`use nexum::{Config, platform};
-
-let config = Config::builder().scheme("myapp").build().expect("valid config");
-let handle = platform::init(&config).expect("registration failed");`} />
+<Code lang="rust" code={"use nexum::{Config, platform};\n\nlet config = Config::builder().scheme(\"myapp\").build().expect(\"valid config\");\nlet handle = platform::init(&config).expect(\"registration failed\");"} />
 
 ## Étapes suivantes
 

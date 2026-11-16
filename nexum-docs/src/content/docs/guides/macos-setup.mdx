@@ -12,17 +12,11 @@ On macOS, nexum performs two distinct jobs: at **runtime** it installs an Apple-
 
 Add a `CFBundleURLTypes` entry listing every scheme from your `Config`. Generate the exact XML nexum expects with `url_types_xml`, which renders the full `<key>CFBundleURLTypes</key><array>…</array>` block:
 
-<Code lang="rust" code={`use nexum_core::Config;
-use nexum_platform::plist;
-
-let config = Config::builder().scheme("myapp").build().expect("valid config");
-println!("{}", plist::url_types_xml(&config));`} />
+<Code lang="rust" code={"use nexum_core::Config;\nuse nexum_platform::plist;\n\nlet config = Config::builder().scheme(\"myapp\").build().expect(\"valid config\");\nprintln!(\"{}\", plist::url_types_xml(&config));"} />
 
 If you package with `cargo-bundle`, the `[package.metadata.bundle]` `osx_url_schemes` key produces the same declaration:
 
-<Code lang="toml" code={`[package.metadata.bundle]
-identifier = "com.example.myapp"
-osx_url_schemes = ["myapp"]`} />
+<Code lang="toml" code={"[package.metadata.bundle]\nidentifier = \"com.example.myapp\"\nosx_url_schemes = [\"myapp\"]"} />
 
 The example apps in the nexum repository use exactly this mechanism.
 
@@ -30,14 +24,11 @@ The example apps in the nexum repository use exactly this mechanism.
 
 `validate_bundle` (re-exported from `nexum_platform` on macOS targets) reads the running bundle's `Contents/Info.plist` — or `Info.plist` directly for iOS-style layouts — and returns every configured scheme that the plist does **not** declare:
 
-<Code lang="rust" code={`let missing = nexum_platform::validate_bundle(&config).expect("readable plist");
-if !missing.is_empty() {
-    eprintln!("schemes missing from Info.plist: {missing:?}");
-}`} />
+<Code lang="rust" code={"let missing = nexum_platform::validate_bundle(&config).expect(\"readable plist\");\nif !missing.is_empty() {\n    eprintln!(\"schemes missing from Info.plist: {missing:?}\");\n}"} />
 
 For a text-level check without touching the bundle, `plist::missing_schemes` compares any plist XML against a `Config` case-insensitively (Apple lower-cases scheme strings) and tolerates arbitrary formatting:
 
-<Code lang="rust" code={`let missing = nexum_platform::plist::missing_schemes(&plist_xml, &config);`} />
+<Code lang="rust" code={"let missing = nexum_platform::plist::missing_schemes(&plist_xml, &config);"} />
 
 A broken or empty plist reports *all* schemes as missing — the function never panics.
 

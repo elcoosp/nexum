@@ -10,10 +10,7 @@ import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 ## Async await
 
-<Code lang="rust" code={`// natif ou wasm, n'importe quel exécuteur :
-while let Some(url) = handle.recv().await {
-    println!("received {url}");
-}`} />
+<Code lang="rust" code={"// natif ou wasm, n'importe quel ex\u00e9cuteur :\nwhile let Some(url) = handle.recv().await {\n    println!(\"received {url}\");\n}"} />
 
 | Méthode | Forme de signature | Notes |
 | --- | --- | --- |
@@ -27,15 +24,9 @@ while let Some(url) = handle.recv().await {
 
 Activez la fonctionnalité et convertissez le handle :
 
-<Code lang="toml" title="Cargo.toml" code={`[dependencies]
-nexum = { version = "0.3", features = ["stream"] }`} />
+<Code lang="toml" title="Cargo.toml" code={"[dependencies]\nnexum = { version = \"0.3\", features = [\"stream\"] }"} />
 
-<Code lang="rust" code={`use futures::StreamExt;
-
-let mut stream = handle.into_stream(); // Stream<Item = String>
-while let Some(url) = stream.next().await {
-    println!("received {url}");
-}`} />
+<Code lang="rust" code={"use futures::StreamExt;\n\nlet mut stream = handle.into_stream(); // Stream<Item = String>\nwhile let Some(url) = stream.next().await {\n    println!(\"received {url}\");\n}"} />
 
 `DeepLinkStream` produit des chaînes d'URL brutes et se termine lorsque le canal s'arrête, donc il se compose avec les adaptateurs de flux habituels — `filter_map`, `timeout`, `select` — de `futures` ou tokio-stream.
 
@@ -43,10 +34,7 @@ while let Some(url) = stream.next().await {
 
 Pour les intégrations de boucle d'événements qui ne peuvent pas attendre, le handle expose des accesseurs non bloquants :
 
-<Code lang="rust" code={`if let Some(url) = handle.try_recv() {
-    // une URL si disponible
-}
-let backlog = handle.drain(); // toutes les URL actuellement en file, dans l'ordre`} />
+<Code lang="rust" code={"if let Some(url) = handle.try_recv() {\n    // une URL si disponible\n}\nlet backlog = handle.drain(); // toutes les URL actuellement en file, dans l'ordre"} />
 
 `try_recv` renvoie `None` à la fois quand la file est vide *et* après l'arrêt — les deux états sont délibérément indistinguables. Utilisez `recv_event_blocking` lorsque vous avez besoin de les distinguer.
 

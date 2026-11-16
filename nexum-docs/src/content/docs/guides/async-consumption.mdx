@@ -10,10 +10,7 @@ import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 ## Async await
 
-<Code lang="rust" code={`// native or wasm, any executor:
-while let Some(url) = handle.recv().await {
-    println!("received {url}");
-}`} />
+<Code lang="rust" code={"// native or wasm, any executor:\nwhile let Some(url) = handle.recv().await {\n    println!(\"received {url}\");\n}"} />
 
 | Method | Signature shape | Notes |
 | --- | --- | --- |
@@ -27,15 +24,9 @@ while let Some(url) = handle.recv().await {
 
 Enable the feature and convert the handle:
 
-<Code lang="toml" title="Cargo.toml" code={`[dependencies]
-nexum = { version = "0.3", features = ["stream"] }`} />
+<Code lang="toml" title="Cargo.toml" code={"[dependencies]\nnexum = { version = \"0.3\", features = [\"stream\"] }"} />
 
-<Code lang="rust" code={`use futures::StreamExt;
-
-let mut stream = handle.into_stream(); // Stream<Item = String>
-while let Some(url) = stream.next().await {
-    println!("received {url}");
-}`} />
+<Code lang="rust" code={"use futures::StreamExt;\n\nlet mut stream = handle.into_stream(); // Stream<Item = String>\nwhile let Some(url) = stream.next().await {\n    println!(\"received {url}\");\n}"} />
 
 `DeepLinkStream` yields raw URL strings and terminates when the channel shuts down, so it composes with the usual stream adaptors — `filter_map`, `timeout`, `select` — from `futures` or tokio-stream.
 
@@ -43,10 +34,7 @@ while let Some(url) = stream.next().await {
 
 For event-loop integrations that cannot await, the handle exposes non-blocking accessors:
 
-<Code lang="rust" code={`if let Some(url) = handle.try_recv() {
-    // one URL if available
-}
-let backlog = handle.drain(); // all currently queued URLs, in order`} />
+<Code lang="rust" code={"if let Some(url) = handle.try_recv() {\n    // one URL if available\n}\nlet backlog = handle.drain(); // all currently queued URLs, in order"} />
 
 `try_recv` returns `None` both when the queue is empty *and* after shutdown — the two states are deliberately indistinguishable. Use `recv_event_blocking` when you need to tell them apart.
 
