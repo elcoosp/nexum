@@ -18,25 +18,25 @@ Dans ce tutoriel, vous construisez un programme Rust complet qui possède le sch
 
 Créez une nouvelle crate binaire et déplacez-vous dedans :
 
-<Code lang="bash" code={`cargo new nexum-demo
+<Code lang="bash" title="Terminal" code={`cargo new nexum-demo
 cd nexum-demo`} />
 
 ## Étape 2 — Ajouter la façade nexum
 
 La façade `nexum` est le chemin à une seule dépendance : elle ré-exporte `Config`, la couche plateforme et l'attribut `#[deep_link]`.
 
-<Code lang="bash" code={`cargo add nexum`} />
+<Code lang="bash" title="Terminal" code={`cargo add nexum`} />
 
 Votre `Cargo.toml` gagne :
 
-<Code lang="toml" code={`[dependencies]
+<Code lang="toml" title="Cargo.toml" code={`[dependencies]
 nexum = "0.3"`} />
 
 ## Étape 3 — Écrire le bootstrap
 
 Remplacez le contenu de `src/main.rs` par :
 
-<Code lang="rust" code={`use nexum::deep_link;
+<Code lang="rust" title="src/main.rs" code={`use nexum::deep_link;
 
 #[deep_link(schemes = ["myapp"])]
 fn main() {
@@ -57,7 +57,7 @@ Le code généré panique si la configuration est invalide ou si l'enregistremen
 
 Démarrez le programme et laissez-le tourner :
 
-<Code lang="bash" code={`cargo run`} />
+<Code lang="bash" title="Terminal" code={`cargo run`} />
 
 Au premier lancement, nexum enregistre `myapp://` pour votre utilisateur :
 
@@ -69,7 +69,7 @@ Au premier lancement, nexum enregistre `myapp://` pour votre utilisateur :
 
 L'application toujours en cours d'exécution, ouvrez une URL `myapp://` depuis un autre terminal :
 
-<Code lang="bash" code={`# macOS
+<Code lang="bash" title="Terminal" code={`# macOS
 open "myapp://open/settings"
 
 # Linux

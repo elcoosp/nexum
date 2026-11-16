@@ -14,7 +14,7 @@ On Linux, nexum registers URL schemes the standards-compliant way: it writes a f
 2. It creates `{data_local_dir}/applications/` if needed and writes `{app_name}.desktop`. The directory comes from `dirs::data_local_dir()`, so `XDG_DATA_HOME` is honored when set.
 3. For every configured scheme it invokes:
 
-<Code lang="bash" code={`xdg-mime default {app_name}.desktop x-scheme-handler/{scheme}`} />
+<Code lang="bash" title="Terminal" code={`xdg-mime default {app_name}.desktop x-scheme-handler/{scheme}`} />
 
 A non-zero exit status from `xdg-mime` surfaces as `Error::Platform` — typically meaning the tool is not installed (`sudo apt install xdg-utils` on Debian-based systems) or the environment has no usable MIME database.
 
