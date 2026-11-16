@@ -1,5 +1,4 @@
 import { defineDocsConfig } from '@elcoosp/docs-toolkit/config';
-import starlightHeadingBadges from 'starlight-heading-badges';
 
 export default await defineDocsConfig({
   llmsTxt: {},
