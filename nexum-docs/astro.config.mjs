@@ -1,6 +1,7 @@
 import { defineDocsConfig } from '@elcoosp/docs-toolkit/config';
 
 export default await defineDocsConfig({
+  topics: true,
   llmsTxt: {},
   site: 'https://nexum-rs.vercel.app',
   domain: 'nexum.vercel.app',
