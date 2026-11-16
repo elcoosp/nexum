@@ -25,6 +25,15 @@ Nexum solves one problem — getting a URL from the operating system into your R
 
 Only the bottom of the stack knows about operating systems. `nexum-core` compiles with `#![forbid(unsafe_code)]` and no platform code at all; `nexum-platform` contains the three cfg-gated desktop backends plus portable generators; the adapters contain nothing but bridge logic into their framework's event model.
 
+```mermaid
+flowchart LR
+    OS["OS URL Scheme<br/><i>macOS · Windows · Linux · iOS · Android</i>"]
+    PLAT["nexum-platform<br/><i>OS registration & single-instance</i>"]
+    HUB["nexum-core<br/><i>DeepLinkHub (#![forbid(unsafe_code)])</i>"]
+    ADAPT["Framework Adapters<br/><i>GPUI · Leptos · Dioxus · Xilem · Floem</i>"]
+    OS --> PLAT --> HUB --> ADAPT
+```
+
 ## The event pipeline
 
 Every deep link follows the same three hops:

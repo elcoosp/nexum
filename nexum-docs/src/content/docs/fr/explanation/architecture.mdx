@@ -25,6 +25,15 @@ Nexum résout un seul problème — faire entrer une URL depuis le système d'ex
 
 Seul le bas de la pile connaît le système d'exploitation. `nexum-core` compile avec `#![forbid(unsafe_code)]` et aucun code dépendant de la plateforme ; `nexum-platform` contient les trois backends de bureau conditionnés par `cfg` plus les générateurs portables ; les adaptateurs ne contiennent que la logique de pont vers le modèle d'événements de leur framework.
 
+```mermaid
+flowchart LR
+    OS["Schéma URL OS<br/><i>macOS · Windows · Linux · iOS · Android</i>"]
+    PLAT["nexum-platform<br/><i>enregistrement OS & mono-instance</i>"]
+    HUB["nexum-core<br/><i>DeepLinkHub (#![forbid(unsafe_code)])</i>"]
+    ADAPT["Adaptateurs framework<br/><i>GPUI · Leptos · Dioxus · Xilem · Floem</i>"]
+    OS --> PLAT --> HUB --> ADAPT
+```
+
 ## Le pipeline d'événements
 
 Chaque lien profond suit les trois mêmes étapes :

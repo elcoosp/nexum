@@ -6,15 +6,10 @@ export default await defineDocsConfig({
   domain: 'nexum.vercel.app',
   title: "Nexum",
   description: "Framework-agnostic deep linking for Rust — one unified API for custom URL schemes and deep-link events across Windows, macOS, Linux, Android and iOS.",
-  sidebar: [],
   extraStarlight: {
-                        expressiveCode: {
-                        	themes: ['github-light', 'github-dark']
-                        },
                         title: 'Nexum',
                         description:
                                 'Framework-agnostic deep linking for Rust — one unified API for custom URL schemes and deep-link events across Windows, macOS, Linux, Android and iOS.',
-                        favicon: '/favicon.png',
                         head: [
                                 { tag: 'link', attrs: { rel: 'icon', type: 'image/png', href: '/favicon.png' } },
                                 { tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' } },
