@@ -1,0 +1,29 @@
+# Curated domain glossary for @elcoosp/docs-toolkit (starlight-term-glossary)
+- term: "cold start"
+  locale: en
+  href: "/explanation/event-sources/"
+  definition: "Launch path where clicking a custom URL starts a new application instance and delivers the link via Source::CommandLine."
+- term: "warm runtime"
+  locale: en
+  href: "/explanation/event-sources/"
+  definition: "Delivery path where an already-running process receives incoming deep links via OS events or single-instance IPC."
+- term: "bounded hub"
+  locale: en
+  href: "/guides/bounded-hub/"
+  definition: "Capacity-limited DeepLinkHub queue protecting memory under bursty URL events with explicit backpressure semantics."
+- term: "single-instance hand-off"
+  locale: en
+  href: "/guides/single-instance/"
+  definition: "IPC mechanism forwarding deep links from a secondary process invocation to the primary running instance before exiting."
+- term: "démarrage à froid"
+  locale: fr
+  href: "/fr/explanation/event-sources/"
+  definition: "Démarrage d’une nouvelle instance via un lien profond transmis en argument de ligne de commande."
+- term: "exécution à chaud"
+  locale: fr
+  href: "/fr/explanation/event-sources/"
+  definition: "Réception d’un lien profond dans une instance déjà active via l’OS ou le transfert mono-instance."
+- term: "transfert mono-instance"
+  locale: fr
+  href: "/fr/guides/single-instance/"
+  definition: "Mécanisme IPC redirigeant les URL reçues par un processus secondaire vers l’instance principale déjà ouverte."
