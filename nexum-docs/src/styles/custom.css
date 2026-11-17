@@ -3,27 +3,27 @@
    Starlight switches themes via the data-theme attribute on <html>. */
 
 :root {
-        --sl-color-accent-low: hsl(225 57% 93%);
-        --sl-color-accent: hsl(225 57% 35%);
-        --sl-color-accent-high: hsl(225 57% 28%);
-        --nexum-brand-dark: #070a12;
+  --sl-color-accent-low: hsl(225 57% 93%);
+  --sl-color-accent: hsl(225 57% 35%);
+  --sl-color-accent-high: hsl(225 57% 28%);
+  --nexum-brand-dark: #070a12;
 }
 
 [data-theme='dark'] {
-        --sl-color-accent-low: hsl(225 57% 16%);
-        --sl-color-accent: hsl(225 57% 60%);
-        --sl-color-accent-high: hsl(225 57% 75%);
+  --sl-color-accent-low: hsl(225 57% 16%);
+  --sl-color-accent: hsl(225 57% 60%);
+  --sl-color-accent-high: hsl(225 57% 75%);
 }
 
 /* Landing-page showcase of the original brand artwork (transparent-background
    render with baked glow) — centered and framed so it reads as a deliberate
    product shot on both themes. */
 .nexum-showcase {
-        margin-top: 2.5rem;
-        text-align: center;
+  margin-top: 2.5rem;
+  text-align: center;
 }
 
 /* Keep the site-header mark compact and vertically aligned with the title. */
 .site-title img {
-        padding: 0.25rem;
+  padding: 0.25rem;
 }
