@@ -11,10 +11,10 @@ hero:
                 alt: Logo Nexum
         actions:
                 - text: Construisez votre premier lien profond
-                  link: /tutorials/getting-started/
+                  link: /fr/tutorials/getting-started/
                   icon: right-arrow
                 - text: Référence de l'API
-                  link: /reference/nexum/
+                  link: /fr/reference/nexum/
                   variant: minimal
 ---
 
@@ -24,7 +24,7 @@ import heroLogo from '../../../assets/hero-logo.png';
 
 `nexum` donne aux applications Rust une façon unique et cohérente de gérer les schémas d'URL personnalisés. Vous déclarez les schémas que votre application possède, nexum les enregistre auprès du système d'exploitation, et votre code reçoit chaque événement de lien profond — que l'URL vienne d'un navigateur, d'un second processus ou de la ligne de commande — via un seul canal producteur-consommateur.
 
-L'espace de travail est organisé pour que vous ne dépendiez que de ce dont vous avez besoin : [`nexum-core`](/reference/core/) contient les primitives indépendantes du framework, [`nexum-platform`](/reference/platform/) effectue l'enregistrement au niveau OS, et de minces crates d'adaptateur exposent le tout à travers les idiomes de cinq frameworks UI.
+L'espace de travail est organisé pour que vous ne dépendiez que de ce dont vous avez besoin : [`nexum-core`](/fr/reference/core/) contient les primitives indépendantes du framework, [`nexum-platform`](/fr/reference/platform/) effectue l'enregistrement au niveau OS, et de minces crates d'adaptateur exposent le tout à travers les idiomes de cinq frameworks UI.
 
 ## Choisissez votre chemin
 
@@ -48,15 +48,15 @@ L'espace de travail est organisé pour que vous ne dépendiez que de ce dont vou
 
 | Crate                                         | Objet                                                                                   |
 | --------------------------------------------- | --------------------------------------------------------------------------------------- |
-| [`nexum`](/reference/nexum/)                  | Façade : cœur + plateforme + l'attribut de bootstrap `#[deep_link]` en une seule dépendance |
-| [`nexum-core`](/reference/core/)              | Producteur `DeepLinkHub` et consommateur `DeepLinkHandle` — bloquant, asynchrone, flux, borné |
-| [`nexum-platform`](/reference/platform/)      | Enregistrement OS, transfert mono-instance, validation plist, entrée mobile             |
-| [`nexum-macros`](/reference/macros/)          | L'attribut `#[deep_link(schemes = ["myapp"])]`                                          |
-| [`nexum-floem`](/reference/nexum-floem/)   | Adaptateur Floem renvoyant un `ReadSignal<Option<String>>` réactif                      |
-| [`nexum-xilem`](/reference/nexum-xilem/)   | Adaptateur Xilem avec le wrapper de vue `with_deep_links`                               |
-| [`nexum-dioxus`](/reference/nexum-dioxus/) | Adaptateur Dioxus avec un chemin de lancement en un appel `launch_desktop`              |
-| [`nexum-leptos`](/reference/nexum-leptos/) | Adaptateur Leptos renvoyant `RwSignal<Option<String>>`, prêt pour wasm                  |
-| [`nexum-gpui`](/reference/nexum-gpui/)     | Adaptateur GPUI pour les applications style Zed                                         |
+| [`nexum`](/fr/reference/nexum/)                  | Façade : cœur + plateforme + l'attribut de bootstrap `#[deep_link]` en une seule dépendance |
+| [`nexum-core`](/fr/reference/core/)              | Producteur `DeepLinkHub` et consommateur `DeepLinkHandle` — bloquant, asynchrone, flux, borné |
+| [`nexum-platform`](/fr/reference/platform/)      | Enregistrement OS, transfert mono-instance, validation plist, entrée mobile             |
+| [`nexum-macros`](/fr/reference/macros/)          | L'attribut `#[deep_link(schemes = ["myapp"])]`                                          |
+| [`nexum-floem`](/fr/reference/nexum-floem/)   | Adaptateur Floem renvoyant un `ReadSignal<Option<String>>` réactif                      |
+| [`nexum-xilem`](/fr/reference/nexum-xilem/)   | Adaptateur Xilem avec le wrapper de vue `with_deep_links`                               |
+| [`nexum-dioxus`](/fr/reference/nexum-dioxus/) | Adaptateur Dioxus avec un chemin de lancement en un appel `launch_desktop`              |
+| [`nexum-leptos`](/fr/reference/nexum-leptos/) | Adaptateur Leptos renvoyant `RwSignal<Option<String>>`, prêt pour wasm                  |
+| [`nexum-gpui`](/fr/reference/nexum-gpui/)     | Adaptateur GPUI pour les applications style Zed                                         |
 
 ## Support des plateformes
 
