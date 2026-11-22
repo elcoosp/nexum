@@ -26,3 +26,14 @@ osx_url_schemes = ["floem"]
 
 [workspace]
 
+[workspace.package]
+version = "0.3.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT OR Apache-2.0"
+authors = ["elcoosp"]
+repository = "https://github.com/elcoosp/nexum.git"
+
+[workspace.dependencies]
+floem = "0.2.0"
+

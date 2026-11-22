@@ -29,3 +29,16 @@ osx_url_schemes = ["nexumdemo"]
 
 [workspace]
 
+[workspace.package]
+version = "0.3.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+authors = ["elcoosp"]
+repository = "https://github.com/elcoosp/nexum.git"
+homepage = "https://github.com/elcoosp/nexum"
+keywords = ["reactive", "signals", "ui", "state", "framework"]
+categories = ["gui", "os"]
+
+[workspace.dependencies]
+leptos = { version = "0.9.0-rc1", default-features = false }
+

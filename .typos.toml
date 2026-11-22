@@ -2,8 +2,15 @@
 # Run in CI by taiki-e/checkout-action + typos-action (see security.yml).
 
 [files]
-# Never scan build artefacts or lockfiles.
-extend-exclude = ["target", "Cargo.lock"]
+# Never scan build artefacts, lockfiles, or vendored third-party code. The
+# `fr/` docs are intentional French translations, not English prose, so they
+# are excluded from the English spellcheck.
+extend-exclude = [
+  "target",
+  "Cargo.lock",
+  "vendor",
+  "nexum-docs/src/content/docs/fr",
+]
 
 [default]
 # Check identifiers as well as prose; the codebase is ASCII-first.
@@ -27,3 +34,19 @@ gpui = "gpui"
 tao = "tao"
 Xdg = "Xdg"
 Sur = "Sur"
+# French terms used in the bilingual glossary (glossary.yml) and the French
+# i18n catalogue (i18n/fr.json); they are intentional, not English typos.
+Construit = "Construit"
+Copie = "Copie"
+Espace = "Espace"
+Tutoriel = "Tutoriel"
+Tutoriels = "Tutoriels"
+commandes = "commandes"
+concrets = "concrets"
+contient = "contient"
+copie = "copie"
+exemples = "exemples"
+projet = "projet"
+symbole = "symbole"
+syntaxe = "syntaxe"
+transfert = "transfert"

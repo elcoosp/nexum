@@ -149,7 +149,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2.9.3
         with:
           key: wasm
-      - run: cargo check -p nexum-core -p nexum-leptos -p leptos-basic --all-features --target wasm32-unknown-unknown
+      - run: cargo check -p nexum-core -p nexum-leptos --all-features --target wasm32-unknown-unknown
+      # `leptos-basic` is its own isolated workspace (see examples/leptos-basic),
+      # so it must be checked through its own manifest rather than `-p`.
+      - run: cargo check --manifest-path examples/leptos-basic/Cargo.toml --target wasm32-unknown-unknown
 
   docs:
     name: Documentation

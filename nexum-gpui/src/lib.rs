@@ -39,7 +39,7 @@ use nexum_core::{Config, DeepLinkHandle, Result};
 /// # Errors
 ///
 /// Returns platform registration errors from
-/// [`nexum_platform::init`](nexum_platform::init), including
+/// [`nexum_platform::init`], including
 /// [`nexum_core::Error::HubAlreadySet`] when called twice.
 pub fn setup_deep_links(app: &gpui::Application, config: &Config) -> Result<DeepLinkHandle> {
     let hub = nexum_core::DeepLinkHub::new();
@@ -49,7 +49,7 @@ pub fn setup_deep_links(app: &gpui::Application, config: &Config) -> Result<Deep
     // GPUI's `on_open_urls` callback takes the URLs only.
     app.on_open_urls(move |urls| {
         for url in urls {
-            nexum_platform::push_url(url.to_string()).ok();
+            nexum_platform::push_url(url.clone()).ok();
         }
     });
 
@@ -66,12 +66,12 @@ pub fn attach_deep_link<V: 'static>(
     handle: DeepLinkHandle,
     view: Entity<V>,
     cx: &mut App,
-    on_url: impl Fn(&mut V, &mut gpui::Context<V>, String) + 'static,
+    on_url: impl Fn(&mut V, &mut gpui::Context<'_, V>, String) + 'static,
 ) {
     cx.spawn({
         async move |cx: &mut AsyncApp| {
             while let Some(url) = handle.recv().await {
-                let _ = cx.update(|cx: &mut App| {
+                cx.update(|cx: &mut App| {
                     view.update(cx, |v, cx| {
                         on_url(v, cx, url);
                         cx.notify();

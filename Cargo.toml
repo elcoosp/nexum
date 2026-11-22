@@ -1,7 +1,6 @@
 [workspace]
 resolver = "3"
 members = [
-    "nexum-gpui",
     "nexum",
     "nexum-macros",
     "nexum-core",
@@ -16,7 +15,6 @@ members = [
 # It is built and verified separately by its own README instructions.
 
 [workspace.package]
-keywords = ["reactive", "signals", "ui", "state", "framework"]
 version = "0.3.0"
 edition = "2024"
 rust-version = "1.86"
@@ -70,3 +68,13 @@ pedantic = { level = "warn", priority = -1 }
 # magnitude smaller while keeping backtraces useful.
 [profile.dev]
 debug = 1
+
+# objc2 0.4.1 (pulled transitively by floem -> floem-winit -> icrate ->
+# block2) fails to compile on rustc 1.100+ with E0277 in
+# `declare/ivar_forwarding_impls.rs`: the `Iterator`/`DoubleEndedIterator`
+# forwarding `nth`/`nth_back` no longer resolve their return projection
+# from the impl-level `<Self as Deref>::Target: Iterator` bound. No 0.4.x
+# release on crates.io carries the fix (it landed in 0.5), so vendor the
+# crate with the two method-level `where` clauses the compiler suggests.
+[patch.crates-io]
+objc2 = { path = "vendor/objc2" }

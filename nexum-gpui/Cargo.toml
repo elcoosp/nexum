@@ -13,9 +13,32 @@ keywords.workspace = true
 categories.workspace = true
 readme = "README.md"
 
-# NOTE: this crate is *not* a workspace member (see the root Cargo.toml).
-# `gpui`/`gpui_platform` are git dependencies on zed-industries/zed and pull in
-# a very large dependency graph; build them explicitly when needed.
+# NOTE: this crate is *not* a member of the root workspace (see the root
+# Cargo.toml). `gpui`/`gpui_platform` are git dependencies on
+# zed-industries/zed and pull in a very large dependency graph; build them
+# explicitly when needed. This manifest is its own workspace root so the
+# `*.workspace = true` inheritance below resolves locally.
+
+[workspace]
+
+[workspace.package]
+version = "0.3.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT OR Apache-2.0"
+authors = ["elcoosp"]
+repository = "https://github.com/elcoosp/nexum.git"
+homepage = "https://github.com/elcoosp/nexum"
+keywords = ["reactive", "signals", "ui", "state", "framework"]
+categories = ["gui", "os"]
+
+[workspace.lints.rust]
+missing_docs = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
 
 [dependencies]
 nexum-core = { path = "../nexum-core", version = "0.3.0" }
