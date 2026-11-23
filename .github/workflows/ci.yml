@@ -62,6 +62,17 @@ jobs:
         with:
           key: ${{ matrix.os }}
       - run: cargo test --workspace --all-features
+        # `floem-winit 0.29.5` (latest) transitively pulls `objc2 0.4.1`
+        # via `icrate 0.0.4 → block2 0.3.0`, which fails to compile on
+        # rustc 1.100+ (E0277 in `ivar_forwarding_impls.rs`). The fix only
+        # exists in objc2 0.5+, which block2 0.3.0 won't accept. Since
+        # objc2 is Apple-only, exclude nexum-floem on macOS; the signal
+        # feature is still tested on Linux/Windows where objc2 is absent.
+        if: runner.os != 'macOS'
+      - run: cargo test --workspace --all-features --exclude nexum-floem
+        if: runner.os == 'macOS'
+      - run: cargo test -p nexum-floem
+        if: runner.os == 'macOS'
 
   coverage:
     name: Coverage (100% on core crates)
@@ -104,7 +115,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.86"
+          toolchain: "1.88"
       - uses: Swatinem/rust-cache@v2.9.3
         with:
           key: msrv

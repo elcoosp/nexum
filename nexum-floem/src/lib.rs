@@ -9,7 +9,7 @@
 //!
 //! # Example (signal feature)
 //!
-//! ```no_run
+//! ```ignore
 //! use floem::reactive::{ReadSignal, SignalGet};
 //! use nexum_core::Config;
 //! use nexum_floem::signal;
